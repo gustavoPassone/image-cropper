@@ -24,6 +24,7 @@ const startOverButton = document.getElementById("start-over-button");
 
 // --- Variáveis de Estado ---
 let originalImage; // O objeto Image() original
+let originalFileName = ""; // <-- CORREÇÃO 3: Armazena o nome do arquivo original
 let displayedImageWidth; // Largura da imagem como ela é desenhada no canvas
 let displayedImageHeight; // Altura da imagem como ela é desenhada no canvas
 let points = []; // Array de 4 objetos {x, y}
@@ -89,15 +90,25 @@ function handleImage(file) {
     return;
   }
 
+  originalFileName = file.name; // <-- CORREÇÃO 3: Salva o nome original
   originalImage = new Image();
   originalImage.src = URL.createObjectURL(file);
   originalImage.onload = () => {
-    // Imagem carregada, inicializa a área de edição
-    initializeCanvas();
-    // Troca as telas
+    // <!--
+    //   CORREÇÃO 1:
+    //   Primeiro, tornamos a tela de edição visível.
+    //   Isso garante que o 'canvasWrapper.clientWidth' não seja 0.
+    // -->
     uploadStep.classList.add("hidden");
     resultStep.classList.add("hidden");
     editStep.classList.remove("hidden");
+
+    // <!--
+    //   CORREÇÃO 1:
+    //   Agora que a tela está visível, podemos inicializar o canvas,
+    //   que desenhará a imagem imediatamente.
+    // -->
+    initializeCanvas();
   };
   originalImage.onerror = () => {
     alert("Não foi possível carregar a imagem.");
@@ -326,7 +337,11 @@ function performWarp() {
     cv.imshow(resultCanvas, dst);
 
     // 7. Configura o link de download
+    // <-- CORREÇÃO 3: Usa o nome original e muda a extensão para .png -->
+    const newFileName =
+      originalFileName.split(".").slice(0, -1).join(".") + ".png";
     downloadButton.href = resultCanvas.toDataURL("image/png");
+    downloadButton.download = newFileName; // Define o nome do arquivo
 
     // 8. Limpa a memória (MUITO IMPORTANTE no OpenCV.js)
     src.delete();
@@ -355,6 +370,7 @@ startOverButton.addEventListener("click", () => {
   // Reseta tudo para a tela inicial
   fileInput.value = null; // Limpa o input de arquivo
   originalImage = null;
+  originalFileName = ""; // <-- CORREÇÃO 3: Limpa o nome do arquivo
   points = [];
   draggingPoint = null;
 

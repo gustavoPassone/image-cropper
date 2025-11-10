@@ -103,10 +103,9 @@
 
         <!-- ETAPA 3: RESULTADO (Oculta) -->
         <div id="result-step" class="hidden space-y-4 text-center">
-          <h2 class="text-2xl font-bold text-gray-800">Imagem Corrigida</h2>
-          <div class="flex justify-center">
-            <canvas id="result-canvas"></canvas>
-          </div>
+          <!-- 
+                  CORREÇÃO 2: Botões movidos para cima 
+                -->
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               id="download-button"
@@ -122,6 +121,11 @@
             >
               Tentar com Outra Imagem
             </button>
+          </div>
+
+          <h2 class="text-2xl font-bold text-gray-800">Imagem Corrigida</h2>
+          <div class="flex justify-center">
+            <canvas id="result-canvas"></canvas>
           </div>
         </div>
       </main>
