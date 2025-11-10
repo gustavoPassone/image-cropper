@@ -1,0 +1,19 @@
+/* Estilo customizado para a área de drop */
+#drop-zone.drag-over {
+  border-color: #3b82f6; /* blue-500 */
+  background-color: #eff6ff; /* blue-50 */
+}
+/* O canvas de edição será responsivo */
+#edit-canvas {
+  max-width: 100%;
+  max-height: 75vh; /* <-- ADICIONADO: Limita a altura para caber na tela */
+  height: auto;
+  cursor: move; /* 'grab' cursor */
+}
+/* O canvas de resultado também */
+#result-canvas {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 0.5rem; /* rounded-lg */
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Corretor de Perspectiva</title>
+
+    <!-- 1. Carrega o Tailwind CSS para um design moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- 2. Carrega a biblioteca OpenCV.js -->
+    <!-- Este arquivo é grande e pode levar alguns segundos para carregar pela primeira vez. -->
+    <script
+      async
+      src="https://docs.opencv.org/4.9.0/opencv.js"
+      onload="onOpenCvReady();"
+    ></script>
+    <link rel="stylesheet" href="style/style.css">
+  </head>
+  <body
+    class="bg-gray-100 font-sans flex items-center justify-center min-h-screen p-4"
+  >
+    <div
+      class="w-full max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden"
+    >
+      <!-- Cabeçalho -->
+      <header class="bg-blue-600 text-white p-5 text-center">
+        <h1 class="text-2xl font-bold">
+          Ferramenta de Correção de Perspectiva
+        </h1>
+        <p class="text-sm text-blue-100">
+          Arraste os 4 cantos para corrigir a imagem
+        </p>
+      </header>
+
+      <main class="p-6 md:p-8 space-y-6">
+        <!-- ETAPA 1: UPLOAD (Inicialmente visível) -->
+        <div id="upload-step" class="space-y-4">
+          <div
+            id="drop-zone"
+            class="border-4 border-dashed border-gray-300 rounded-lg p-10 text-center transition-all duration-300"
+          >
+            <p id="opencv-status" class="text-lg font-semibold text-gray-700">
+              Carregando biblioteca de processamento...
+            </p>
+            <p id="upload-instructions" class="text-gray-500 mt-2 hidden">
+              Arraste e solte uma imagem aqui (PNG, JPG)
+            </p>
+          </div>
+
+          <div id="upload-buttons" class="text-center hidden">
+            <p class="text-gray-600 my-2">ou</p>
+            <button
+              id="select-button"
+              class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Selecionar Arquivo
+            </button>
+            <input
+              type="file"
+              id="file-input"
+              class="hidden"
+              accept="image/png, image/jpeg, image/jpg"
+            />
+          </div>
+        </div>
+
+        <!-- ETAPA 2: EDIÇÃO (Oculta) -->
+        <div id="edit-step" class="hidden space-y-4">
+          <p class="text-center text-gray-600">
+            Arraste os 4 pontos azuis para os cantos do objeto.
+          </p>
+          <!-- O canvas de edição será inserido aqui pelo JS -->
+          <div
+            id="canvas-wrapper"
+            class="relative mx-auto"
+            style="max-width: 100%; height: auto"
+          >
+            <canvas
+              id="edit-canvas"
+              class="rounded-lg shadow-md bg-gray-200"
+            ></canvas>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              id="reset-button"
+              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Reiniciar Pontos
+            </button>
+            <button
+              id="crop-button"
+              class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Finalizar e Corrigir
+            </button>
+          </div>
+        </div>
+
+        <!-- ETAPA 3: RESULTADO (Oculta) -->
+        <div id="result-step" class="hidden space-y-4 text-center">
+          <h2 class="text-2xl font-bold text-gray-800">Imagem Corrigida</h2>
+          <div class="flex justify-center">
+            <canvas id="result-canvas"></canvas>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              id="download-button"
+              href="#"
+              download="imagem_corrigida.png"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition-colors no-underline"
+            >
+              Baixar Imagem (PNG)
+            </a>
+            <button
+              id="start-over-button"
+              class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Tentar com Outra Imagem
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="js/script.js"></script>
+  </body>
+</html>
