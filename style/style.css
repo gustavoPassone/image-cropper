@@ -3,12 +3,26 @@
   border-color: #3b82f6; /* blue-500 */
   background-color: #eff6ff; /* blue-50 */
 }
-/* O canvas de edição será responsivo */
-#edit-canvas {
+/* O wrapper do canvas para centralizar e limitar o tamanho */
+#canvas-wrapper {
+  display: flex; /* Para centralizar o canvas */
+  justify-content: center;
+  align-items: center;
   max-width: 100%;
-  max-height: 75vh; /* <-- ADICIONADO: Limita a altura para caber na tela */
-  height: auto;
+  max-height: 75vh; /* Limita a altura do wrapper */
+  margin: 0 auto; /* Centraliza o wrapper horizontalmente */
+  position: relative;
+}
+
+/* O canvas de edição será responsivo dentro do seu wrapper */
+#edit-canvas {
+  max-width: 100%; /* Garante que o canvas não transborde o wrapper */
+  max-height: 100%; /* Garante que o canvas não transborde o wrapper */
+  display: block; /* Remove espaço extra abaixo do canvas */
   cursor: move; /* 'grab' cursor */
+  background-color: #fff; /* Fundo branco para o canvas */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
+  border-radius: 0.5rem; /* Bordas arredondadas */
 }
 /* O canvas de resultado também */
 #result-canvas {
