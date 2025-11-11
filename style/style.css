@@ -31,3 +31,27 @@
   border: 1px solid #e5e7eb; /* gray-200 */
   border-radius: 0.5rem; /* rounded-lg */
 }
+
+/* Estilo para os botões de ícone */
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: center;
+  min-width: 80px; /* Garante que os 3 botões fiquem bem distribuídos */
+}
+.action-button span {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  margin-top: 0.25rem;
+}
+.action-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}

@@ -26,6 +26,7 @@
       src="https://docs.opencv.org/4.9.0/opencv.js"
       onload="onOpenCvReady();"
     ></script>
+
     <link rel="stylesheet" href="style/style.css" />
   </head>
   <body
@@ -78,6 +79,38 @@
 
         <!-- ETAPA 2: EDIÇÃO (Oculta) -->
         <div id="edit-step" class="hidden space-y-4">
+          <!-- 
+                    CORREÇÃO 1 & 2: Botões movidos para o topo, renomeados e adicionado "Girar".
+                -->
+          <div class="flex gap-4 justify-center items-stretch mb-4">
+            <!-- Botão Reiniciar --><button
+              id="reset-button"
+              class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
+            >
+              <span class="action-icon">🔄</span>
+              <!-- Ícone de Recarregar/Resetar -->
+              <span>Reiniciar</span>
+            </button>
+
+            <!-- Botão Girar --><button
+              id="rotate-button"
+              class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
+            >
+              <span class="action-icon">↪️</span>
+              <!-- Ícone de Rotação -->
+              <span>Girar</span>
+            </button>
+
+            <!-- Botão Finalizar --><button
+              id="crop-button"
+              class="action-button bg-green-600 hover:bg-green-700 text-white"
+            >
+              <span class="action-icon">✅</span>
+              <!-- Ícone de Checar/Finalizar -->
+              <span>Finalizar</span>
+            </button>
+          </div>
+
           <p class="text-center text-gray-600">
             Arraste os 4 pontos azuis para os cantos do objeto.
           </p>
@@ -85,26 +118,12 @@
           <div id="canvas-wrapper">
             <canvas id="edit-canvas"></canvas>
           </div>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              id="reset-button"
-              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Reiniciar Pontos
-            </button>
-            <button
-              id="crop-button"
-              class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Finalizar e Corrigir
-            </button>
-          </div>
         </div>
 
         <!-- ETAPA 3: RESULTADO (Oculta) -->
         <div id="result-step" class="hidden space-y-4 text-center">
           <!-- 
-                  CORREÇÃO 2: Botões movidos para cima 
+                  Botões de ação do resultado (CORREÇÃO 2 do passo anterior) 
                 -->
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -130,6 +149,7 @@
         </div>
       </main>
     </div>
+
     <script src="js/script.js"></script>
   </body>
 </html>

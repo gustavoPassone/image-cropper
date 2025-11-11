@@ -17,6 +17,7 @@ const editCtx = editCanvas.getContext("2d");
 
 const cropButton = document.getElementById("crop-button");
 const resetButton = document.getElementById("reset-button");
+const rotateButton = document.getElementById("rotate-button"); // Novo botão de rotação
 
 const resultCanvas = document.getElementById("result-canvas");
 const downloadButton = document.getElementById("download-button");
@@ -24,11 +25,12 @@ const startOverButton = document.getElementById("start-over-button");
 
 // --- Variáveis de Estado ---
 let originalImage; // O objeto Image() original
-let originalFileName = ""; // <-- CORREÇÃO 3: Armazena o nome do arquivo original
+let originalFileName = ""; // Armazena o nome do arquivo original
 let displayedImageWidth; // Largura da imagem como ela é desenhada no canvas
 let displayedImageHeight; // Altura da imagem como ela é desenhada no canvas
 let points = []; // Array de 4 objetos {x, y}
 let draggingPoint = null; // Índice do ponto sendo arrastado (0-3)
+let rotationAngle = 0; // Novo estado: Ângulo de rotação em graus (0, 90, 180, 270)
 let canvasScale = 1; // Para corrigir cliques em canvas responsivo (relação entre canvas.width e rect.width)
 
 const POINT_RADIUS = 25; // Raio visual do círculo externo do ponto
@@ -90,24 +92,19 @@ function handleImage(file) {
     return;
   }
 
-  originalFileName = file.name; // <-- CORREÇÃO 3: Salva o nome original
+  originalFileName = file.name; // Salva o nome original
   originalImage = new Image();
   originalImage.src = URL.createObjectURL(file);
   originalImage.onload = () => {
-    // <!--
-    //   CORREÇÃO 1:
-    //   Primeiro, tornamos a tela de edição visível.
-    //   Isso garante que o 'canvasWrapper.clientWidth' não seja 0.
-    // -->
+    // Reinicia a rotação ao carregar nova imagem
+    rotationAngle = 0;
+
+    // 1. Torna a tela de edição visível
     uploadStep.classList.add("hidden");
     resultStep.classList.add("hidden");
     editStep.classList.remove("hidden");
 
-    // <!--
-    //   CORREÇÃO 1:
-    //   Agora que a tela está visível, podemos inicializar o canvas,
-    //   que desenhará a imagem imediatamente.
-    // -->
+    // 2. Inicializa o canvas e desenha a imagem
     initializeCanvas();
   };
   originalImage.onerror = () => {
@@ -117,30 +114,43 @@ function handleImage(file) {
 
 // --- 3. Lógica de Edição (Canvas) ---
 
+function getRotatedDimensions() {
+  // Retorna as dimensões da imagem como se ela estivesse fisicamente girada
+  const isRotated90or270 = rotationAngle % 180 !== 0;
+  if (isRotated90or270) {
+    return { width: originalImage.height, height: originalImage.width };
+  }
+  return { width: originalImage.width, height: originalImage.height };
+}
+
 function initializeCanvas() {
   if (!originalImage) return;
 
-  const maxWidth = canvasWrapper.clientWidth * 0.9; // 90% da largura do wrapper
-  const maxHeight = window.innerHeight * 0.7; // 70% da altura da viewport para caber bem
+  const maxWidth = canvasWrapper.clientWidth * 0.9;
+  const maxHeight = window.innerHeight * 0.7;
+
+  // Usa as dimensões rotacionadas para o cálculo de escala
+  const rotatedDims = getRotatedDimensions();
+  let originalRotatedWidth = rotatedDims.width;
+  let originalRotatedHeight = rotatedDims.height;
 
   let scaleFactor = 1;
 
-  // Calcula o fator de escala para que a imagem caiba completamente
-  if (originalImage.width > maxWidth || originalImage.height > maxHeight) {
+  // Calcula o fator de escala para que a imagem caiba completamente na tela
+  if (originalRotatedWidth > maxWidth || originalRotatedHeight > maxHeight) {
     scaleFactor = Math.min(
-      maxWidth / originalImage.width,
-      maxHeight / originalImage.height
+      maxWidth / originalRotatedWidth,
+      maxHeight / originalRotatedHeight
     );
   }
 
-  displayedImageWidth = originalImage.width * scaleFactor;
-  displayedImageHeight = originalImage.height * scaleFactor;
+  displayedImageWidth = originalRotatedWidth * scaleFactor;
+  displayedImageHeight = originalRotatedHeight * scaleFactor;
 
   editCanvas.width = displayedImageWidth;
   editCanvas.height = displayedImageHeight;
 
   // Inicializa os 4 pontos nos cantos da *imagem redimensionada*
-  // Damos uma pequena margem (ex: 10% do menor lado da imagem REDIMENSIONADA)
   const margin = Math.min(displayedImageWidth, displayedImageHeight) * 0.1;
 
   // Ajusta os pontos para as novas dimensões do canvas
@@ -160,16 +170,36 @@ function drawCanvas() {
   // Limpa o canvas
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
 
-  // 1. Desenha a imagem original (redimensionada)
+  // 1. Prepara a matriz de transformação do canvas para rotação
+  editCtx.save();
+
+  // Move o centro de rotação para o centro do canvas
+  editCtx.translate(editCanvas.width / 2, editCanvas.height / 2);
+  editCtx.rotate((rotationAngle * Math.PI) / 180);
+
+  // 2. Desenha a imagem original (redimensionada) no centro do canvas girado
+  // A imagem deve ser desenhada no centro do canvas *após* a rotação
+  const isRotated90or270 = rotationAngle % 180 !== 0;
+  let imageWidth = isRotated90or270
+    ? displayedImageHeight
+    : displayedImageWidth;
+  let imageHeight = isRotated90or270
+    ? displayedImageWidth
+    : displayedImageHeight;
+
+  // O drawImage sempre usa as dimensões originais (não giradas) da imagem
   editCtx.drawImage(
     originalImage,
-    0,
-    0,
-    displayedImageWidth,
-    displayedImageHeight
+    -imageWidth / 2, // Deslocamento para centralizar a imagem no eixo X
+    -imageHeight / 2, // Deslocamento para centralizar a imagem no eixo Y
+    imageWidth,
+    imageHeight
   );
 
-  // 2. Desenha as linhas de conexão
+  // Reverte a matriz de transformação para desenhar os pontos corretamente
+  editCtx.restore();
+
+  // 3. Desenha as linhas de conexão (SEM ROTAÇÃO)
   editCtx.strokeStyle = POINT_STROKE_COLOR;
   editCtx.lineWidth = LINE_WIDTH;
   editCtx.beginPath();
@@ -180,7 +210,7 @@ function drawCanvas() {
   editCtx.closePath();
   editCtx.stroke();
 
-  // 3. Desenha os pontos (círculos transparentes com borda)
+  // 4. Desenha os pontos (círculos transparentes com borda)
   points.forEach((p, index) => {
     editCtx.fillStyle = POINT_FILL_COLOR; // Corpo do círculo
     editCtx.strokeStyle =
@@ -224,6 +254,12 @@ function findPoint(x, y) {
 }
 
 function onDown(e) {
+  // Permite que o arrastar funcione mesmo com a imagem girada
+  if (rotationAngle !== 0) {
+    // Redesenha para limpar a borda vermelha se o clique não for em um ponto
+    if (draggingPoint === null) drawCanvas();
+  }
+
   e.preventDefault();
   const pos = getCanvasPos(e);
   draggingPoint = findPoint(pos.x, pos.y);
@@ -251,50 +287,129 @@ function onUp(e) {
   }
 }
 
+// --- Função de Rotação (Novo) ---
+function rotateImage() {
+  if (!originalImage) return;
+
+  // Incrementa 90 graus (sentido horário)
+  rotationAngle = (rotationAngle + 90) % 360;
+
+  // Re-inicializa o canvas, pois a rotação pode mudar as dimensões de exibição
+  initializeCanvas();
+}
+
 // --- 4. Processamento com OpenCV.js ---
 
 function performWarp() {
   try {
-    // Para o OpenCV, precisamos dos pontos na escala da IMAGEM ORIGINAL.
-    // Primeiro, calculamos o fator de escala que usamos para exibir a imagem.
-    const originalToDisplayedScaleX = originalImage.width / displayedImageWidth;
-    const originalToDisplayedScaleY =
-      originalImage.height / displayedImageHeight;
+    // Dimensões originais da imagem (sem rotação)
+    const origW = originalImage.width;
+    const origH = originalImage.height;
 
-    // 1. Carrega a imagem original no OpenCV (sem redimensionamento)
+    // Fator de escala para reverter dos pixels do Canvas para os pixels Originais
+    const rotatedDims = getRotatedDimensions();
+    const originalRotatedWidth = rotatedDims.width;
+    const originalRotatedHeight = rotatedDims.height;
+
+    const originalToDisplayedScaleX =
+      originalRotatedWidth / displayedImageWidth;
+    const originalToDisplayedScaleY =
+      originalRotatedHeight / displayedImageHeight;
+
+    // 1. Mapeia os pontos do Canvas para a Imagem *Original e Rotacionada*
+    const pointsOnRotatedOriginal = points.map((p) => ({
+      x: p.x * originalToDisplayedScaleX,
+      y: p.y * originalToDisplayedScaleY,
+    }));
+
+    // 2. Transforma as coordenadas dos pontos para a Imagem *Original (0 graus)*
+    const angle = rotationAngle; // 0, 90, 180, 270
+    let finalPointsOriginalScale = [];
+
+    pointsOnRotatedOriginal.forEach((p) => {
+      let x, y;
+      const halfW = origW / 2;
+      const halfH = origH / 2;
+
+      // Rotaciona em torno do centro da imagem original (origW, origH)
+      // Ponto (x', y') na imagem girada
+      // Ponto (x, y) na imagem original
+
+      switch (angle) {
+        case 0: // 0°: Sem rotação
+          x = p.x;
+          y = p.y;
+          break;
+        case 90: // 90°: (x', y') -> (origW - y', x')
+          x = p.y;
+          y = origW - p.x;
+          break;
+        case 180: // 180°: (x', y') -> (origW - x', origH - y')
+          x = origW - p.x;
+          y = origH - p.y;
+          break;
+        case 270: // 270°: (x', y') -> (y', origH - x')
+          x = origH - p.y;
+          y = p.x;
+          break;
+        default:
+          x = p.x;
+          y = p.y;
+      }
+
+      // Mapeamento correto (sem precisar de matriz de rotação complexa):
+      if (angle === 90) {
+        // (x', y') na imagem girada 90 é (y', origH - x') na imagem original
+        // ESTA É A LÓGICA CORRETA PARA 90° (Antes, era a de 270°)
+        x = p.y;
+        y = origH - p.x;
+      } else if (angle === 180) {
+        // (x', y') na imagem girada 180 é (origW - x, origH - y) na imagem original
+        x = origW - p.x;
+        y = origH - p.y;
+      } else if (angle === 270) {
+        // (x', y') na imagem girada 270 é (origW - y', x') na imagem original
+        // ESTA É A LÓGICA CORRETA PARA 270° (Antes, era a de 90°)
+        x = origW - p.y;
+        y = p.x;
+      } else {
+        // 0 ou 360
+        x = p.x;
+        y = p.y;
+      }
+
+      finalPointsOriginalScale.push(x, y);
+    });
+
+    // 3. Carrega a imagem original no OpenCV (sem redimensionamento)
     let src = cv.imread(originalImage);
 
-    // 2. Define os 4 pontos de origem (do usuário), convertidos para a escala original da imagem
-    let srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-      points[0].x * originalToDisplayedScaleX,
-      points[0].y * originalToDisplayedScaleY,
-      points[1].x * originalToDisplayedScaleX,
-      points[1].y * originalToDisplayedScaleY,
-      points[2].x * originalToDisplayedScaleX,
-      points[2].y * originalToDisplayedScaleY,
-      points[3].x * originalToDisplayedScaleX,
-      points[3].y * originalToDisplayedScaleY,
-    ]);
+    // 4. Define os 4 pontos de origem (do usuário) na escala original da imagem
+    let srcPoints = cv.matFromArray(
+      4,
+      1,
+      cv.CV_32FC2,
+      finalPointsOriginalScale
+    );
 
-    // 3. Define os 4 pontos de destino (um retângulo perfeito)
-    // Calculamos as dimensões do retângulo de saída com base na largura
-    // e altura máximas do quadrilátero selecionado na ESCALA ORIGINAL.
+    // 5. Define os 4 pontos de destino (um retângulo perfeito)
+    // Usamos os pontos já transformados para calcular as dimensões do retângulo
 
     let p0_orig = {
-      x: points[0].x * originalToDisplayedScaleX,
-      y: points[0].y * originalToDisplayedScaleY,
+      x: finalPointsOriginalScale[0],
+      y: finalPointsOriginalScale[1],
     };
     let p1_orig = {
-      x: points[1].x * originalToDisplayedScaleX,
-      y: points[1].y * originalToDisplayedScaleY,
+      x: finalPointsOriginalScale[2],
+      y: finalPointsOriginalScale[3],
     };
     let p2_orig = {
-      x: points[2].x * originalToDisplayedScaleX,
-      y: points[2].y * originalToDisplayedScaleY,
+      x: finalPointsOriginalScale[4],
+      y: finalPointsOriginalScale[5],
     };
     let p3_orig = {
-      x: points[3].x * originalToDisplayedScaleX,
-      y: points[3].y * originalToDisplayedScaleY,
+      x: finalPointsOriginalScale[6],
+      y: finalPointsOriginalScale[7],
     };
 
     // Larguras (topo, base) e Alturas (esquerda, direita) na escala ORIGINAL
@@ -306,6 +421,7 @@ function performWarp() {
     let outWidth = Math.round(Math.max(w1, w2));
     let outHeight = Math.round(Math.max(h1, h2));
 
+    // Mapeamento final dos pontos de destino para o retângulo perfeito
     let dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
       0,
       0, // Canto superior esquerdo
@@ -317,10 +433,10 @@ function performWarp() {
       outHeight - 1, // Canto inferior esquerdo
     ]);
 
-    // 4. Calcula a Matriz de Transformação de Perspectiva
+    // 6. Calcula a Matriz de Transformação de Perspectiva
     let M = cv.getPerspectiveTransform(srcPoints, dstPoints);
 
-    // 5. Aplica a transformação (warp)
+    // 7. Aplica a transformação (warp)
     let dst = new cv.Mat();
     let dsize = new cv.Size(outWidth, outHeight);
     cv.warpPerspective(
@@ -333,24 +449,23 @@ function performWarp() {
       new cv.Scalar()
     );
 
-    // 6. Exibe a imagem resultante no canvas de resultado
+    // 8. Exibe a imagem resultante no canvas de resultado
     cv.imshow(resultCanvas, dst);
 
-    // 7. Configura o link de download
-    // <-- CORREÇÃO 3: Usa o nome original e muda a extensão para .png -->
+    // 9. Configura o link de download
     const newFileName =
       originalFileName.split(".").slice(0, -1).join(".") + ".png";
     downloadButton.href = resultCanvas.toDataURL("image/png");
     downloadButton.download = newFileName; // Define o nome do arquivo
 
-    // 8. Limpa a memória (MUITO IMPORTANTE no OpenCV.js)
+    // 10. Limpa a memória (MUITO IMPORTANTE no OpenCV.js)
     src.delete();
     dst.delete();
     M.delete();
     srcPoints.delete();
     dstPoints.delete();
 
-    // 9. Troca para a tela de resultado
+    // 11. Troca para a tela de resultado
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
@@ -364,15 +479,17 @@ function performWarp() {
 // Botões do Canvas
 resetButton.addEventListener("click", initializeCanvas);
 cropButton.addEventListener("click", performWarp);
+rotateButton.addEventListener("click", rotateImage); // Ativa a rotação
 
 // Botões de Resultado
 startOverButton.addEventListener("click", () => {
   // Reseta tudo para a tela inicial
   fileInput.value = null; // Limpa o input de arquivo
   originalImage = null;
-  originalFileName = ""; // <-- CORREÇÃO 3: Limpa o nome do arquivo
+  originalFileName = "";
   points = [];
   draggingPoint = null;
+  rotationAngle = 0; // Zera o ângulo de rotação
 
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
   // Nâo precisa limpar o resultCanvas, ele será sobrescrito
