@@ -1,38 +1,32 @@
-/* Estilo customizado para a área de drop */
+/* ... Estilos existentes ... */
 #drop-zone.drag-over {
   border-color: #3b82f6; /* blue-500 */
   background-color: #eff6ff; /* blue-50 */
 }
-/* O wrapper do canvas para centralizar e limitar o tamanho */
 #canvas-wrapper {
-  display: flex; /* Para centralizar o canvas */
+  display: flex;
   justify-content: center;
   align-items: center;
   max-width: 100%;
-  max-height: 75vh; /* Limita a altura do wrapper */
-  margin: 0 auto; /* Centraliza o wrapper horizontalmente */
+  max-height: 75vh;
+  margin: 0 auto;
   position: relative;
 }
-
-/* O canvas de edição será responsivo dentro do seu wrapper */
 #edit-canvas {
-  max-width: 100%; /* Garante que o canvas não transborde o wrapper */
-  max-height: 100%; /* Garante que o canvas não transborde o wrapper */
-  display: block; /* Remove espaço extra abaixo do canvas */
-  cursor: move; /* 'grab' cursor */
-  background-color: #fff; /* Fundo branco para o canvas */
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
-  border-radius: 0.5rem; /* Bordas arredondadas */
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  cursor: move;
+  background-color: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
 }
-/* O canvas de resultado também */
 #result-canvas {
   max-width: 100%;
   height: auto;
-  border: 1px solid #e5e7eb; /* gray-200 */
-  border-radius: 0.5rem; /* rounded-lg */
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
 }
-
-/* Estilo para os botões de ícone */
 .action-button {
   display: flex;
   flex-direction: column;
@@ -44,10 +38,10 @@
   cursor: pointer;
   font-weight: 600;
   text-align: center;
-  min-width: 80px; /* Garante que os 3 botões fiquem bem distribuídos */
+  min-width: 80px;
 }
 .action-button span {
-  font-size: 0.875rem; /* text-sm */
+  font-size: 0.875rem;
   line-height: 1.25rem;
   margin-top: 0.25rem;
 }

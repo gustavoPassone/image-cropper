@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Corretor de Perspectiva</title>
+    <title>Corretor de Perspectiva - Imagem e PDF</title>
 
-    <!-- 1. Carrega o Tailwind CSS para um design moderno -->
+    <!-- 1. Carrega o Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -20,12 +20,24 @@
     </script>
 
     <!-- 2. Carrega a biblioteca OpenCV.js -->
-    <!-- Este arquivo é grande e pode levar alguns segundos para carregar pela primeira vez. -->
     <script
       async
       src="https://docs.opencv.org/4.9.0/opencv.js"
       onload="onOpenCvReady();"
     ></script>
+
+    <!-- 3. NOVAS BIBLIOTECAS: pdf.js (para ler PDFs) e jsPDF (para criar PDFs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+      // Configura o worker para o pdf.js
+      if (typeof pdfjsLib !== "undefined") {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+    </script>
 
     <link rel="stylesheet" href="style/style.css" />
   </head>
@@ -41,22 +53,22 @@
           Ferramenta de Correção de Perspectiva
         </h1>
         <p class="text-sm text-blue-100">
-          Arraste os 4 cantos para corrigir a imagem
+          Arraste os 4 cantos para corrigir a imagem ou PDF
         </p>
       </header>
 
       <main class="p-6 md:p-8 space-y-6">
-        <!-- ETAPA 1: UPLOAD (Inicialmente visível) -->
+        <!-- ETAPA 1: UPLOAD -->
         <div id="upload-step" class="space-y-4">
           <div
             id="drop-zone"
             class="border-4 border-dashed border-gray-300 rounded-lg p-10 text-center transition-all duration-300"
           >
             <p id="opencv-status" class="text-lg font-semibold text-gray-700">
-              Carregando biblioteca de processamento...
+              Carregando bibliotecas...
             </p>
             <p id="upload-instructions" class="text-gray-500 mt-2 hidden">
-              Arraste e solte uma imagem aqui (PNG, JPG)
+              Arraste e solte uma Imagem ou PDF aqui
             </p>
           </div>
 
@@ -68,99 +80,83 @@
             >
               Selecionar Arquivo
             </button>
-            <input
+            <!-- Atualiza o 'accept' para incluir PDF --><input
               type="file"
               id="file-input"
               class="hidden"
-              accept="image/png, image/jpeg, image/jpg"
+              accept="image/png, image/jpeg, image/jpg, application/pdf"
             />
           </div>
         </div>
 
-        <!-- ETAPA 2: EDIÇÃO (Oculta) -->
+        <!-- ETAPA 2: EDIÇÃO -->
         <div id="edit-step" class="hidden space-y-4">
-          <!-- 
-                    CORREÇÃO 1 & 2: Botões movidos para o topo, renomeados e adicionado "Girar".
-                -->
           <div
             class="flex gap-2 sm:gap-4 justify-center items-stretch mb-4 flex-wrap"
           >
-            <!-- Botão Cancelar (NOVO) --><button
+            <button
               id="cancel-button"
               class="action-button bg-red-600 hover:bg-red-700 text-white"
             >
               <span class="action-icon">❌</span>
-              <!-- Ícone de Cancelar/Fechar -->
               <span>Cancelar</span>
             </button>
-
-            <!-- Botão Reiniciar --><button
+            <button
               id="reset-button"
               class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
             >
               <span class="action-icon">🔄</span>
-              <!-- Ícone de Recarregar/Resetar -->
               <span>Reiniciar</span>
             </button>
-
-            <!-- Botão Girar --><button
+            <button
               id="rotate-button"
               class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
             >
               <span class="action-icon">↪️</span>
-              <!-- Ícone de Rotação -->
               <span>Girar</span>
             </button>
-
-            <!-- Botão Finalizar --><button
+            <button
               id="crop-button"
               class="action-button bg-green-600 hover:bg-green-700 text-white"
             >
               <span class="action-icon">✅</span>
-              <!-- Ícone de Checar/Finalizar -->
               <span>Finalizar</span>
             </button>
           </div>
 
           <p class="text-center text-gray-600">
-            Arraste os 4 pontos azuis para os cantos do objeto.
+            Arraste os 4 pontos para os cantos do objeto.
           </p>
-          <!-- O canvas de edição será inserido aqui pelo JS -->
           <div id="canvas-wrapper">
             <canvas id="edit-canvas"></canvas>
           </div>
         </div>
 
-        <!-- ETAPA 3: RESULTADO (Oculta) -->
+        <!-- ETAPA 3: RESULTADO -->
         <div id="result-step" class="hidden space-y-4 text-center">
-          <!-- 
-                  Botões de ação do resultado (CORREÇÃO 2 do passo anterior) 
-                -->
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+            <!-- O botão de download agora é um <button> genérico; a ação é definida no JS --><button
               id="download-button"
-              href="#"
-              download="imagem_corrigida.png"
               class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition-colors no-underline"
             >
-              Baixar Imagem (PNG)
-            </a>
+              Baixar Resultado
+            </button>
             <button
               id="start-over-button"
               class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors"
             >
-              Tentar com Outra Imagem
+              Tentar com Outro Arquivo
             </button>
           </div>
 
-          <h2 class="text-2xl font-bold text-gray-800">Imagem Corrigida</h2>
+          <h2 class="text-2xl font-bold text-gray-800">Resultado Corrigido</h2>
           <div class="flex justify-center">
             <canvas id="result-canvas"></canvas>
           </div>
         </div>
       </main>
 
-      <!-- MODAL DE CONFIRMAÇÃO (NOVO) -->
+      <!-- MODAL DE CONFIRMAÇÃO -->
       <div
         id="modal-overlay"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden"
