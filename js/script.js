@@ -18,10 +18,16 @@ const editCtx = editCanvas.getContext("2d");
 const cropButton = document.getElementById("crop-button");
 const resetButton = document.getElementById("reset-button");
 const rotateButton = document.getElementById("rotate-button"); // Novo botão de rotação
+const cancelButton = document.getElementById("cancel-button"); // Novo botão de cancelar
 
 const resultCanvas = document.getElementById("result-canvas");
 const downloadButton = document.getElementById("download-button");
 const startOverButton = document.getElementById("start-over-button");
+
+// Referências do Modal (NOVO)
+const modalOverlay = document.getElementById("modal-overlay");
+const modalBtnYes = document.getElementById("modal-btn-yes");
+const modalBtnNo = document.getElementById("modal-btn-no");
 
 // --- Variáveis de Estado ---
 let originalImage; // O objeto Image() original
@@ -280,6 +286,7 @@ function onMove(e) {
   drawCanvas();
 }
 
+// --- Lógica de Arrastar Pontos (Mouse e Toque) ---
 function onUp(e) {
   if (draggingPoint !== null) {
     draggingPoint = null;
@@ -476,13 +483,8 @@ function performWarp() {
 
 // --- 5. Lógica dos Botões de Ação ---
 
-// Botões do Canvas
-resetButton.addEventListener("click", initializeCanvas);
-cropButton.addEventListener("click", performWarp);
-rotateButton.addEventListener("click", rotateImage); // Ativa a rotação
-
-// Botões de Resultado
-startOverButton.addEventListener("click", () => {
+// Função para resetar tudo e voltar ao Upload (NOVA, refatorada)
+function resetToUploadScreen() {
   // Reseta tudo para a tela inicial
   fileInput.value = null; // Limpa o input de arquivo
   originalImage = null;
@@ -497,7 +499,53 @@ startOverButton.addEventListener("click", () => {
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
   uploadStep.classList.remove("hidden");
+}
+
+// --- Lógica do Modal (NOVO) ---
+function handleModalKeydown(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    modalBtnYes.click(); // Confirma
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    modalBtnNo.click(); // Cancela
+  }
+}
+
+function showModal() {
+  modalOverlay.classList.remove("hidden");
+  window.addEventListener("keydown", handleModalKeydown);
+  modalBtnYes.focus(); // Foca no botão de confirmação
+}
+
+function hideModal() {
+  modalOverlay.classList.add("hidden");
+  window.removeEventListener("keydown", handleModalKeydown);
+}
+
+// Botões do Modal
+modalBtnYes.addEventListener("click", () => {
+  hideModal();
+  resetToUploadScreen(); // Executa o cancelamento
 });
+modalBtnNo.addEventListener("click", hideModal);
+// Permite fechar clicando fora do modal
+modalOverlay.addEventListener("click", (e) => {
+  if (e.target === modalOverlay) {
+    hideModal();
+  }
+});
+
+// --- Listeners Principais ---
+
+// Botões do Canvas
+resetButton.addEventListener("click", initializeCanvas);
+cropButton.addEventListener("click", performWarp);
+rotateButton.addEventListener("click", rotateImage);
+cancelButton.addEventListener("click", showModal); // Chama o modal de confirmação
+
+// Botões de Resultado
+startOverButton.addEventListener("click", resetToUploadScreen); // Reutiliza a função de reset
 
 // Adiciona todos os listeners de mouse e toque
 editCanvas.addEventListener("mousedown", onDown);
