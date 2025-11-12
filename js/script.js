@@ -182,7 +182,7 @@ function initializeCanvas() {
   const maxWidth = canvasWrapper.clientWidth * 0.9;
   const maxHeight = window.innerHeight * 0.7;
 
-  const rotatedDims = getRotatedDimensions();
+  const rotatedDims = getRotatedDimensions(); // Rotação é 0 aqui na inicialização
   let originalRotatedWidth = rotatedDims.width;
   let originalRotatedHeight = rotatedDims.height;
 
@@ -201,14 +201,48 @@ function initializeCanvas() {
   editCanvas.width = displayedImageWidth;
   editCanvas.height = displayedImageHeight;
 
-  const margin = Math.min(displayedImageWidth, displayedImageHeight) * 0.1;
+  // --- INÍCIO DA NOVA LÓGICA DE AUTO-CROP ---
+  // (Nota: Isso só roda em rotação 0, pois é a inicialização)
+  let autoPoints = findDocumentCorners(originalImage);
 
-  points = [
-    { x: margin, y: margin },
-    { x: displayedImageWidth - margin, y: margin },
-    { x: displayedImageWidth - margin, y: displayedImageHeight - margin },
-    { x: margin, y: displayedImageHeight - margin },
-  ];
+  if (autoPoints && autoPoints.length === 4) {
+    console.log("Detecção automática de cantos BEM SUCEDIDA.");
+    // Converte os pontos (na escala original) para a escala do canvas (usando o scaleFactor uniforme)
+    points = [
+      { x: autoPoints[0].x * scaleFactor, y: autoPoints[0].y * scaleFactor }, // tl
+      { x: autoPoints[1].x * scaleFactor, y: autoPoints[1].y * scaleFactor }, // tr
+      { x: autoPoints[2].x * scaleFactor, y: autoPoints[2].y * scaleFactor }, // br
+      { x: autoPoints[3].x * scaleFactor, y: autoPoints[3].y * scaleFactor }, // bl
+    ];
+
+    // Check de sanidade. Se os pontos forem ruins, volte ao manual.
+    if (
+      points[2].x > displayedImageWidth ||
+      points[2].y > displayedImageHeight ||
+      points[0].x < 0
+    ) {
+      console.warn(
+        "Pontos automáticos parecem inválidos, revertendo para manual."
+      );
+      autoPoints = null; // Força o fallback
+    }
+  }
+
+  // Fallback: Se a detecção falhar (autoPoints == null) ou se não for tentada
+  if (!autoPoints || autoPoints.length !== 4) {
+    console.log(
+      "Detecção automática FALHOU ou foi invalidada. Usando margem manual."
+    );
+    const margin = Math.min(displayedImageWidth, displayedImageHeight) * 0.1;
+
+    points = [
+      { x: margin, y: margin }, // Canto superior esquerdo
+      { x: displayedImageWidth - margin, y: margin }, // Canto superior direito
+      { x: displayedImageWidth - margin, y: displayedImageHeight - margin }, // Canto inferior direito
+      { x: margin, y: displayedImageHeight - margin }, // Canto inferior esquerdo
+    ];
+  }
+  // --- FIM DA NOVA LÓGICA DE AUTO-CROP ---
 
   drawCanvas();
 }
@@ -316,6 +350,103 @@ function rotateImage() {
   if (!originalImage) return;
   rotationAngle = (rotationAngle + 90) % 360;
   initializeCanvas();
+}
+
+// --- NOVA FUNÇÃO DE DETECÇÃO DE BORDAS ---
+function findDocumentCorners(imageElement) {
+  let src;
+  let gray;
+  let blurred;
+  let edged;
+  let contours;
+  let hierarchy;
+  let bestApprox;
+
+  try {
+    src = cv.imread(imageElement);
+    gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    blurred = new cv.Mat();
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    edged = new cv.Mat();
+    cv.Canny(blurred, edged, 75, 200);
+
+    contours = new cv.MatVector();
+    hierarchy = new cv.Mat();
+    // Usamos RETR_EXTERNAL para pegar apenas os contornos externos (o documento)
+    cv.findContours(
+      edged,
+      contours,
+      hierarchy,
+      cv.RETR_EXTERNAL,
+      cv.CHAIN_APPROX_SIMPLE
+    );
+
+    let maxArea = 0;
+    bestApprox = null;
+
+    for (let i = 0; i < contours.size(); ++i) {
+      let cnt = contours.get(i);
+      let area = cv.contourArea(cnt);
+
+      // Filtra contornos pequenos
+      if (area > (src.rows * src.cols) / 20) {
+        // Deve ocupar pelo menos 5% da imagem
+        let peri = cv.arcLength(cnt, true);
+        let approx = new cv.Mat();
+        cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+
+        // Procura por um quadrilátero (4 lados) que seja o maior
+        if (approx.rows === 4 && area > maxArea) {
+          maxArea = area;
+          if (bestApprox) {
+            bestApprox.delete(); // Limpa o anterior
+          }
+          bestApprox = approx;
+        } else {
+          approx.delete();
+        }
+      }
+      cnt.delete();
+    }
+
+    if (bestApprox) {
+      // Nós temos um contorno de 4 pontos
+      let pts = [
+        { x: bestApprox.data32S[0], y: bestApprox.data32S[1] },
+        { x: bestApprox.data32S[2], y: bestApprox.data32S[3] },
+        { x: bestApprox.data32S[4], y: bestApprox.data32S[5] },
+        { x: bestApprox.data32S[6], y: bestApprox.data32S[7] },
+      ];
+
+      // Ordena os pontos para [tl, tr, br, bl]
+      // 1. Ordena por Y (pega os 2 de cima, os 2 de baixo)
+      pts.sort((a, b) => a.y - b.y);
+      // 2. Ordena os 2 de cima por X (tl, tr)
+      let top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
+      // 3. Ordena os 2 de baixo por X (bl, br)
+      let bottom = pts.slice(2, 4).sort((a, b) => a.x - b.x);
+
+      let orderedPoints = [top[0], top[1], bottom[1], bottom[0]]; // tl, tr, br, bl
+
+      bestApprox.delete();
+      return orderedPoints;
+    }
+
+    return null; // Nenhum documento encontrado
+  } catch (error) {
+    console.error("Auto-crop falhou:", error);
+    return null;
+  } finally {
+    // Limpeza de memória do OpenCV
+    if (src) src.delete();
+    if (gray) gray.delete();
+    if (blurred) blurred.delete();
+    if (edged) edged.delete();
+    if (contours) contours.delete();
+    if (hierarchy) hierarchy.delete();
+    if (bestApprox && !bestApprox.isDeleted()) bestApprox.delete();
+  }
 }
 
 // --- 4. Processamento com OpenCV.js (Atualizado para salvar PDF) ---
