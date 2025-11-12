@@ -132,6 +132,29 @@
           </div>
         </div>
 
+        <!-- NOVA ETAPA 2.5: PRÉ-VISUALIZAÇÃO DE PDF -->
+        <div id="pdf-preview-step" class="hidden space-y-4">
+          <h2 class="text-2xl font-bold text-gray-800 text-center">
+            Selecione uma Página para Editar
+          </h2>
+          <div
+            id="pdf-thumbnails-container"
+            class="border-2 border-gray-200 rounded-lg p-4"
+          >
+            <div id="pdf-thumbnails">
+              <!-- Miniaturas de PDF serão injetadas aqui -->
+            </div>
+          </div>
+          <div class="flex justify-center">
+            <button
+              id="cancel-pdf-preview"
+              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Cancelar e Voltar
+            </button>
+          </div>
+        </div>
+
         <!-- ETAPA 3: RESULTADO -->
         <div id="result-step" class="hidden space-y-4 text-center">
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
@@ -141,6 +164,12 @@
             >
               Baixar Resultado
             </button>
+            <!-- NOVO BOTÃO: Editar outra página --><button
+              id="edit-another-page-button"
+              class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              Editar Outra Página
+            </button>
             <button
               id="start-over-button"
               class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors"
@@ -149,14 +178,17 @@
             </button>
           </div>
 
-          <h2 class="text-2xl font-bold text-gray-800">Resultado Corrigido</h2>
+          <h2 id="result-title" class="text-2xl font-bold text-gray-800">
+            Resultado Corrigido
+          </h2>
+          <!-- INÍCIO DA CORREÇÃO: O canvas de resultado e a div modal estavam faltando -->
           <div class="flex justify-center">
             <canvas id="result-canvas"></canvas>
           </div>
         </div>
       </main>
 
-      <!-- MODAL DE CONFIRMAÇÃO -->
+      <!-- MODAL DE CONFIRMAÇÃO (Reinserido) -->
       <div
         id="modal-overlay"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden"
@@ -187,6 +219,7 @@
           </div>
         </div>
       </div>
+      <!-- FIM DA CORREÇÃO -->
     </div>
 
     <script src="js/script.js"></script>

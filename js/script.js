@@ -20,9 +20,18 @@ const resetButton = document.getElementById("reset-button");
 const rotateButton = document.getElementById("rotate-button");
 const cancelButton = document.getElementById("cancel-button");
 
+// Nova Etapa: PDF Preview
+const pdfPreviewStep = document.getElementById("pdf-preview-step");
+const pdfThumbnailsContainer = document.getElementById("pdf-thumbnails");
+const cancelPdfPreviewButton = document.getElementById("cancel-pdf-preview");
+
 const resultCanvas = document.getElementById("result-canvas");
+const resultTitle = document.getElementById("result-title"); // Título do resultado
 let downloadButton = document.getElementById("download-button"); // Use 'let' para reatribuir
 const startOverButton = document.getElementById("start-over-button");
+const editAnotherPageButton = document.getElementById(
+  "edit-another-page-button"
+); // Novo botão
 
 const modalOverlay = document.getElementById("modal-overlay");
 const modalBtnYes = document.getElementById("modal-btn-yes");
@@ -38,6 +47,11 @@ let points = [];
 let draggingPoint = null;
 let rotationAngle = 0;
 let canvasScale = 1;
+
+// Novas variáveis de estado para PDF
+let loadedPdf = null;
+let totalPdfPages = 0;
+let currentEditingPageNum = 1;
 
 // ... Constantes de desenho (POINT_RADIUS, etc.) ...
 const POINT_RADIUS = 25;
@@ -102,6 +116,9 @@ function handleFile(file) {
   originalFileName = file.name;
   originalFileType = file.type; // Armazena o tipo de arquivo
   rotationAngle = 0;
+  loadedPdf = null; // Reseta o PDF carregado
+  totalPdfPages = 0;
+  currentEditingPageNum = 1;
 
   if (fileType.startsWith("image/")) {
     // --- Caminho 1: É uma IMAGEM (comportamento antigo) ---
@@ -118,41 +135,116 @@ function handleFile(file) {
     opencvStatus.textContent = "Renderizando PDF..."; // Feedback
     uploadStep.classList.remove("hidden"); // Mostra o status
     editStep.classList.add("hidden");
+    pdfPreviewStep.classList.add("hidden");
 
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const arrayBuffer = e.target.result;
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        const page = await pdf.getPage(1); // Pega a primeira página
+        const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
 
-        const scale = 2.0; // Renderiza em alta resolução
-        const viewport = page.getViewport({ scale });
+        loadedPdf = pdfDoc; // Armazena o documento PDF
+        totalPdfPages = pdfDoc.numPages;
 
-        // Cria um canvas temporário para renderizar o PDF
-        const tempCanvas = document.createElement("canvas");
-        const tempCtx = tempCanvas.getContext("2d");
-        tempCanvas.width = viewport.width;
-        tempCanvas.height = viewport.height;
-
-        await page.render({ canvasContext: tempCtx, viewport }).promise;
-
-        // Converte o canvas do PDF em um objeto Image
-        originalImage = new Image();
-        originalImage.src = tempCanvas.toDataURL("image/png");
-        originalImage.onload = () => {
-          showEditScreen(); // Agora mostra a tela de edição
-        };
-        originalImage.onerror = () => {
-          alert("Não foi possível carregar a imagem do PDF.");
-        };
+        if (totalPdfPages === 1) {
+          // Se tem só 1 página, carrega direto no editor
+          await loadPageIntoEditor(1);
+        } else {
+          // Se tem > 1 página, mostra a tela de miniaturas
+          opencvStatus.textContent = "Carregando miniaturas...";
+          await renderPdfThumbnails();
+          uploadStep.classList.add("hidden");
+          pdfPreviewStep.classList.remove("hidden");
+          opencvStatus.textContent = "Bibliotecas carregadas!"; // Reseta o status
+        }
       } catch (error) {
-        console.error("Erro ao renderizar PDF:", error);
+        console.error("Erro ao carregar PDF:", error);
         alert("Não foi possível carregar o arquivo PDF.");
         resetToUploadScreen();
       }
     };
     reader.readAsArrayBuffer(file);
+  }
+}
+
+// NOVO: Renderiza a página do PDF no editor
+async function loadPageIntoEditor(pageNum) {
+  if (!loadedPdf) return;
+
+  currentEditingPageNum = pageNum;
+
+  try {
+    const page = await loadedPdf.getPage(pageNum);
+    const scale = 2.0; // Renderiza em alta resolução
+    const viewport = page.getViewport({ scale });
+
+    // Cria um canvas temporário para renderizar o PDF
+    const tempCanvas = document.createElement("canvas");
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCanvas.width = viewport.width;
+    tempCanvas.height = viewport.height;
+
+    await page.render({ canvasContext: tempCtx, viewport }).promise;
+
+    // Converte o canvas do PDF em um objeto Image
+    originalImage = new Image();
+    originalImage.src = tempCanvas.toDataURL("image/png");
+    originalImage.onload = () => {
+      showEditScreen(); // Mostra a tela de edição
+    };
+    originalImage.onerror = () => {
+      alert("Não foi possível carregar a imagem do PDF.");
+    };
+  } catch (error) {
+    console.error(`Erro ao carregar página ${pageNum}:`, error);
+    alert(`Não foi possível carregar a página ${pageNum}.`);
+    resetToUploadScreen();
+  }
+}
+
+// NOVO: Renderiza as miniaturas de todas as páginas
+async function renderPdfThumbnails() {
+  if (!loadedPdf) return;
+  pdfThumbnailsContainer.innerHTML = ""; // Limpa miniaturas antigas
+
+  for (let i = 1; i <= totalPdfPages; i++) {
+    const pageNum = i;
+
+    // Cria os elementos da miniatura
+    const wrapper = document.createElement("div");
+    wrapper.className = "thumbnail-item";
+
+    const canvas = document.createElement("canvas");
+    const p = document.createElement("p");
+    p.textContent = `Página ${pageNum}`;
+
+    // Adiciona o listener de clique
+    wrapper.addEventListener("click", () => {
+      pdfPreviewStep.classList.add("hidden");
+      // Mostra um feedback de carregamento
+      opencvStatus.textContent = `Carregando página ${pageNum}...`;
+      uploadStep.classList.remove("hidden");
+      loadPageIntoEditor(pageNum);
+    });
+
+    // Renderiza a miniatura
+    try {
+      const page = await loadedPdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 0.3 }); // Escala pequena para miniatura
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      wrapper.appendChild(canvas);
+      wrapper.appendChild(p);
+      pdfThumbnailsContainer.appendChild(wrapper);
+    } catch (error) {
+      console.error(`Erro ao renderizar miniatura ${pageNum}:`, error);
+      p.textContent = `Erro Pág. ${pageNum}`;
+      wrapper.appendChild(p);
+      pdfThumbnailsContainer.appendChild(wrapper);
+    }
   }
 }
 
@@ -560,7 +652,10 @@ function performWarp() {
 
     if (originalFileType === "application/pdf") {
       // Salvar como PDF
-      downloadButton.textContent = "Baixar PDF";
+      const pdfName = newFileNameBase + `-pagina-${currentEditingPageNum}.pdf`;
+      resultTitle.textContent = `Resultado Corrigido (Página ${currentEditingPageNum})`;
+      downloadButton.textContent = `Baixar PDF (Página ${currentEditingPageNum})`;
+
       downloadButton.addEventListener("click", () => {
         try {
           const imgData = resultCanvas.toDataURL("image/png");
@@ -573,7 +668,7 @@ function performWarp() {
           const pdf = new jsPDF({ orientation, unit: "px", format: [w, h] });
 
           pdf.addImage(imgData, "PNG", 0, 0, w, h);
-          pdf.save(newFileNameBase + ".pdf");
+          pdf.save(pdfName);
         } catch (e) {
           console.error("Erro ao gerar PDF:", e);
           alert("Não foi possível gerar o PDF.");
@@ -581,6 +676,7 @@ function performWarp() {
       });
     } else {
       // Salvar como PNG (comportamento original)
+      resultTitle.textContent = `Resultado Corrigido`;
       downloadButton.textContent = "Baixar Imagem (PNG)";
       downloadButton.addEventListener("click", () => {
         const link = document.createElement("a");
@@ -598,6 +694,13 @@ function performWarp() {
     M.delete();
     srcPoints.delete();
     dstPoints.delete();
+
+    // NOVO: Mostra o botão "Editar Outra Página" se aplicável
+    if (loadedPdf && totalPdfPages > 1) {
+      editAnotherPageButton.classList.remove("hidden");
+    } else {
+      editAnotherPageButton.classList.add("hidden");
+    }
 
     // Troca para a tela de resultado
     editStep.classList.add("hidden");
@@ -619,10 +722,16 @@ function resetToUploadScreen() {
   draggingPoint = null;
   rotationAngle = 0;
 
+  // Reseta estado do PDF
+  loadedPdf = null;
+  totalPdfPages = 0;
+  currentEditingPageNum = 1;
+
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
 
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
+  pdfPreviewStep.classList.add("hidden"); // Esconde a tela de miniaturas
   uploadStep.classList.remove("hidden");
 
   // Reseta o status do upload
@@ -669,6 +778,14 @@ cropButton.addEventListener("click", performWarp);
 rotateButton.addEventListener("click", rotateImage);
 cancelButton.addEventListener("click", showModal);
 startOverButton.addEventListener("click", resetToUploadScreen);
+
+// Novos Listeners
+cancelPdfPreviewButton.addEventListener("click", resetToUploadScreen);
+editAnotherPageButton.addEventListener("click", () => {
+  resultStep.classList.add("hidden");
+  pdfPreviewStep.classList.remove("hidden");
+  // Não precisa renderizar miniaturas de novo, elas já estão lá
+});
 
 editCanvas.addEventListener("mousedown", onDown);
 editCanvas.addEventListener("mousemove", onMove);

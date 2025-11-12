@@ -49,3 +49,40 @@
   font-size: 1.5rem;
   line-height: 1;
 }
+/* Estilos para a nova tela de miniaturas de PDF */
+#pdf-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: #f9fafb; /* gray-50 */
+  border-radius: 0.5rem;
+}
+.thumbnail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid #e5e7eb; /* gray-200 */
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #fff;
+}
+.thumbnail-item:hover {
+  border-color: #3b82f6; /* blue-500 */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+.thumbnail-item canvas {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #f3f4f6; /* gray-100 */
+}
+.thumbnail-item p {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563; /* gray-600 */
+  margin-top: 0.5rem;
+}
