@@ -40,6 +40,19 @@ const exportFilenameInput = document.getElementById("export-filename-input");
 const exportFormatSelect = document.getElementById("export-format-select");
 const exportButton = document.getElementById("export-button");
 
+// NOVAS Referências para Filtros de Pós-Processamento
+const postProcessingToolbar = document.getElementById(
+  "post-processing-toolbar"
+);
+const filterNoneButton = document.getElementById("filter-none-button");
+const filterBwButton = document.getElementById("filter-bw-button");
+const filterContrastButton = document.getElementById("filter-contrast-button");
+const filterSharpenButton = document.getElementById("filter-sharpen-button");
+const filterRotateButton = document.getElementById("filter-rotate-button");
+const sliderContainer = document.getElementById("slider-container");
+const intensitySlider = document.getElementById("intensity-slider");
+const sliderValue = document.getElementById("slider-value");
+
 const modalOverlay = document.getElementById("modal-overlay");
 const modalBtnYes = document.getElementById("modal-btn-yes");
 const modalBtnNo = document.getElementById("modal-btn-no");
@@ -60,6 +73,10 @@ let loadedPdf = null;
 let totalPdfPages = 0;
 let currentEditingPageNum = 1;
 let editedPages = new Map(); // Armazena as páginas editadas (pageNum -> dataURL)
+
+// Novas variáveis de estado para Pós-Processamento
+let correctedImageMat = null; // cv.Mat com a imagem original corrigida
+let currentFilter = "none"; // 'none', 'bw', 'contrast', 'sharpen'
 
 // ... Constantes de desenho (POINT_RADIUS, etc.) ...
 const POINT_RADIUS = 25;
@@ -605,7 +622,14 @@ function getWarpedResult() {
 function processAndShowFinalResult() {
   try {
     const dst = getWarpedResult();
+
+    if (correctedImageMat) {
+      correctedImageMat.delete();
+    }
+    correctedImageMat = dst.clone(); // Armazena a imagem corrigida
+
     cv.imshow(resultCanvas, dst);
+    dst.delete();
 
     const newFileNameBase = originalFileName.split(".").slice(0, -1).join(".");
     if (originalFileType === "application/pdf") {
@@ -618,12 +642,15 @@ function processAndShowFinalResult() {
       resultTitle.textContent = `Resultado Corrigido`;
     }
 
-    dst.delete();
     if (loadedPdf && totalPdfPages > 1) {
       editAnotherPageButton.classList.remove("hidden");
     } else {
       editAnotherPageButton.classList.add("hidden");
     }
+
+    postProcessingToolbar.classList.remove("hidden");
+    updateActiveFilterButton("none");
+
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
@@ -736,7 +763,121 @@ function handleExport() {
   }
 }
 
-// --- 5. Lógica dos Botões de Ação ---
+// --- 5. Lógica de Pós-Processamento (Filtros) ---
+function updateActiveFilterButton(activeFilter) {
+  currentFilter = activeFilter;
+  document
+    .querySelectorAll(".filter-button")
+    .forEach((btn) => btn.classList.remove("active"));
+
+  const buttonMap = {
+    none: filterNoneButton,
+    bw: filterBwButton,
+    contrast: filterContrastButton,
+    sharpen: filterSharpenButton,
+  };
+
+  if (buttonMap[activeFilter]) {
+    buttonMap[activeFilter].classList.add("active");
+  }
+
+  if (
+    activeFilter === "bw" ||
+    activeFilter === "contrast" ||
+    activeFilter === "sharpen"
+  ) {
+    intensitySlider.value = 50;
+    sliderValue.textContent = "50%";
+    sliderContainer.classList.remove("hidden");
+  } else {
+    sliderContainer.classList.add("hidden");
+  }
+  applyPostProcessingEffects();
+}
+
+function applyPostProcessingEffects() {
+  if (!correctedImageMat || correctedImageMat.isDeleted()) return;
+
+  let matToDisplay;
+  try {
+    if (currentFilter === "bw") {
+      matToDisplay = new cv.Mat();
+      let gray = new cv.Mat();
+      cv.cvtColor(correctedImageMat, gray, cv.COLOR_RGBA2GRAY);
+      // Mapeia o slider (0-100) para o parâmetro C (15 a -5)
+      // Intensidade maior (100) => C=-5 (mais detalhes, mais "preto")
+      // Intensidade menor (0) => C=15 (menos detalhes, mais "branco")
+      const C = 15 - (parseInt(intensitySlider.value, 10) / 100) * 20;
+      cv.adaptiveThreshold(
+        gray,
+        matToDisplay,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY,
+        11,
+        C
+      );
+      gray.delete();
+    } else if (currentFilter === "contrast") {
+      // Mapeia o slider (0-100) para o alpha (contraste) (1.0 a 3.0)
+      const alpha = 1.0 + (parseInt(intensitySlider.value, 10) / 100) * 2.0;
+      matToDisplay = new cv.Mat();
+      correctedImageMat.convertTo(matToDisplay, -1, alpha, 0); // beta=0
+    } else if (currentFilter === "sharpen") {
+      let sharpened = new cv.Mat();
+      // Basic sharpen kernel
+      let kernel = cv.matFromArray(
+        3,
+        3,
+        cv.CV_32F,
+        [0, -1, 0, -1, 5, -1, 0, -1, 0]
+      );
+      cv.filter2D(
+        correctedImageMat,
+        sharpened,
+        cv.CV_8U,
+        kernel,
+        new cv.Point(-1, -1),
+        0,
+        cv.BORDER_DEFAULT
+      );
+
+      // Blend the sharpened image with the original based on the slider
+      const alpha = parseInt(intensitySlider.value, 10) / 100; // Sharpened image weight
+      const beta = 1.0 - alpha; // Original image weight
+
+      matToDisplay = new cv.Mat();
+      cv.addWeighted(
+        sharpened,
+        alpha,
+        correctedImageMat,
+        beta,
+        0,
+        matToDisplay,
+        -1
+      );
+
+      sharpened.delete();
+      kernel.delete();
+    } else {
+      // 'none'
+      matToDisplay = correctedImageMat.clone();
+    }
+    cv.imshow(resultCanvas, matToDisplay);
+  } catch (e) {
+    console.error("Error applying filter", e);
+    // Fallback para a imagem original corrigida em caso de erro
+    if (correctedImageMat && !correctedImageMat.isDeleted()) {
+      cv.imshow(resultCanvas, correctedImageMat);
+    }
+  } finally {
+    if (matToDisplay && !matToDisplay.isDeleted()) {
+      matToDisplay.delete();
+    }
+  }
+}
+
+// --- 6. Lógica dos Botões de Ação ---
 
 function resetToUploadScreen() {
   fileInput.value = null;
@@ -750,11 +891,18 @@ function resetToUploadScreen() {
   totalPdfPages = 0;
   currentEditingPageNum = 1;
   editedPages.clear();
+  if (correctedImageMat && !correctedImageMat.isDeleted()) {
+    correctedImageMat.delete();
+    correctedImageMat = null;
+  }
+  currentFilter = "none";
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
   pdfPreviewStep.classList.add("hidden");
   uploadStep.classList.remove("hidden");
+  postProcessingToolbar.classList.add("hidden");
+  sliderContainer.classList.add("hidden");
   finishAndDownloadButton.classList.add("hidden");
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.add("text-green-600");
@@ -806,6 +954,36 @@ finishAndDownloadButton.addEventListener("click", buildAndDownloadFinalPdf);
 editAnotherPageButton.addEventListener("click", () => {
   resultStep.classList.add("hidden");
   pdfPreviewStep.classList.remove("hidden");
+});
+
+// Listeners dos Filtros
+filterNoneButton.addEventListener("click", () =>
+  updateActiveFilterButton("none")
+);
+filterBwButton.addEventListener("click", () => updateActiveFilterButton("bw"));
+filterContrastButton.addEventListener("click", () =>
+  updateActiveFilterButton("contrast")
+);
+filterSharpenButton.addEventListener("click", () =>
+  updateActiveFilterButton("sharpen")
+);
+
+intensitySlider.addEventListener("input", () => {
+  sliderValue.textContent = `${intensitySlider.value}%`;
+  applyPostProcessingEffects();
+});
+
+filterRotateButton.addEventListener("click", () => {
+  if (!correctedImageMat || correctedImageMat.isDeleted()) return;
+  try {
+    let rotatedMat = new cv.Mat();
+    cv.rotate(correctedImageMat, rotatedMat, cv.ROTATE_90_CLOCKWISE);
+    correctedImageMat.delete(); // Deleta a matriz antiga
+    correctedImageMat = rotatedMat; // Atribui a nova
+    applyPostProcessingEffects(); // Reaplica o filtro na imagem rotacionada
+  } catch (e) {
+    console.error("Error rotating image: ", e);
+  }
 });
 
 editCanvas.addEventListener("mousedown", onDown);
