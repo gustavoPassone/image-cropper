@@ -177,7 +177,7 @@
   max-width: 90vw;
 }
 
-#result-step {
+#result-step:not(.hidden) {
   display: flex;
   gap: 1.5rem; /* 24px */
 }
@@ -228,4 +228,18 @@
 }
 #result-controls::-webkit-scrollbar-thumb:hover {
   background: #9ca3af; /* gray-400 */
+}
+
+/* --- NOVOS ESTILOS PARA LUPA DE CANTO (MAGNIFIER) --- */
+#loupe-canvas {
+  display: none; /* Oculto por padrão */
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 3px solid #3b82f6; /* blue-500 */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  background-color: #fff;
+  pointer-events: none; /* Essencial para não interferir com o mouse */
+  z-index: 100;
 }

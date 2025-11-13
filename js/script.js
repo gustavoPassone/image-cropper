@@ -15,6 +15,8 @@ const uploadButtons = document.getElementById("upload-buttons");
 const canvasWrapper = document.getElementById("canvas-wrapper");
 const editCanvas = document.getElementById("edit-canvas");
 const editCtx = editCanvas.getContext("2d");
+const loupeCanvas = document.getElementById("loupe-canvas");
+const loupeCtx = loupeCanvas.getContext("2d");
 
 const cropButton = document.getElementById("crop-button");
 const resetButton = document.getElementById("reset-button");
@@ -87,6 +89,10 @@ const LINE_WIDTH = 3;
 const POINT_FILL_COLOR = "rgba(128, 128, 128, 0.4)";
 const POINT_STROKE_COLOR = "rgba(0, 150, 255, 0.9)";
 const DRAGGING_STROKE_COLOR = "rgba(255, 0, 0, 0.9)";
+
+// Novas constantes para a Lupa
+const LOUPE_SIZE = 150;
+const LOUPE_ZOOM = 5;
 
 // --- 1. Inicialização do OpenCV ---
 
@@ -437,11 +443,81 @@ function findPoint(x, y) {
   return null;
 }
 
+function updateLoupe(x, y) {
+  // Configura o tamanho do canvas da lupa
+  loupeCanvas.width = LOUPE_SIZE;
+  loupeCanvas.height = LOUPE_SIZE;
+
+  // Posiciona a lupa em relação ao wrapper principal do canvas
+  const canvasRect = editCanvas.getBoundingClientRect();
+  const wrapperRect = canvasWrapper.getBoundingClientRect();
+
+  const offsetX = canvasRect.left - wrapperRect.left;
+  const offsetY = canvasRect.top - wrapperRect.top;
+
+  // A posição do cursor no elemento canvas (que pode estar escalado)
+  const displayX = x / canvasScale;
+  const displayY = y / canvasScale;
+
+  // Posiciona a lupa com um deslocamento
+  let loupeTop = displayY + offsetY - LOUPE_SIZE - 20;
+  let loupeLeft = displayX + offsetX + 20;
+
+  // Mantém a lupa dentro da área visível do wrapper, se possível
+  if (loupeTop < 0) {
+    loupeTop = displayY + offsetY + 20;
+  }
+  if (loupeLeft + LOUPE_SIZE > wrapperRect.width) {
+    loupeLeft = displayX + offsetX - LOUPE_SIZE - 20;
+  }
+
+  loupeCanvas.style.top = `${loupeTop}px`;
+  loupeCanvas.style.left = `${loupeLeft}px`;
+
+  // Desenha o conteúdo ampliado
+  loupeCtx.fillStyle = "white";
+  loupeCtx.fillRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
+
+  const sourceSize = LOUPE_SIZE / LOUPE_ZOOM;
+  const sourceX = x - sourceSize / 2;
+  const sourceY = y - sourceSize / 2;
+
+  loupeCtx.drawImage(
+    editCanvas,
+    sourceX,
+    sourceY, // Posição do retângulo de origem
+    sourceSize,
+    sourceSize, // Tamanho do retângulo de origem
+    0,
+    0, // Posição do retângulo de destino
+    LOUPE_SIZE,
+    LOUPE_SIZE // Tamanho do retângulo de destino
+  );
+
+  // Desenha uma mira para precisão
+  loupeCtx.strokeStyle = "rgba(255, 0, 0, 0.7)";
+  loupeCtx.lineWidth = 1;
+  loupeCtx.beginPath();
+  loupeCtx.moveTo(LOUPE_SIZE / 2, 0);
+  loupeCtx.lineTo(LOUPE_SIZE / 2, LOUPE_SIZE);
+  loupeCtx.moveTo(0, LOUPE_SIZE / 2);
+  loupeCtx.lineTo(LOUPE_SIZE, LOUPE_SIZE / 2);
+  loupeCtx.stroke();
+}
+
+function hideLoupe() {
+  loupeCanvas.style.display = "none";
+}
+
 function onDown(e) {
   e.preventDefault();
   const pos = getCanvasPos(e);
   draggingPoint = findPoint(pos.x, pos.y);
-  if (draggingPoint !== null) drawCanvas();
+  if (draggingPoint !== null) {
+    drawCanvas();
+    loupeCanvas.style.display = "block";
+    updateLoupe(pos.x, pos.y);
+  }
 }
 
 function onMove(e) {
@@ -451,6 +527,7 @@ function onMove(e) {
   points[draggingPoint].x = Math.max(0, Math.min(displayedImageWidth, pos.x));
   points[draggingPoint].y = Math.max(0, Math.min(displayedImageHeight, pos.y));
   drawCanvas();
+  updateLoupe(pos.x, pos.y);
 }
 
 function onUp(e) {
@@ -458,6 +535,7 @@ function onUp(e) {
     draggingPoint = null;
     drawCanvas();
   }
+  hideLoupe();
 }
 
 function rotateImage() {
