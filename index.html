@@ -20,10 +20,21 @@
     </script>
 
     <!-- 2. Carrega a biblioteca OpenCV.js -->
+    <script>
+      // O objeto Module precisa ser definido ANTES do script do opencv.js ser carregado.
+      // Ele irá chamar a função global `onOpenCvReady` quando o OpenCV estiver totalmente inicializado.
+      var Module = {
+        onRuntimeInitialized: function () {
+          if (window.onOpenCvReady) {
+            window.onOpenCvReady();
+          }
+        },
+      };
+    </script>
     <script
       async
       src="https://docs.opencv.org/4.9.0/opencv.js"
-      onload="onOpenCvReady();"
+      id="opencv-script"
     ></script>
 
     <!-- 3. NOVAS BIBLIOTECAS: pdf.js (para ler PDFs) e jsPDF (para criar PDFs) -->
@@ -80,7 +91,7 @@
             >
               Selecionar Arquivo
             </button>
-            <!-- Atualiza o 'accept' para incluir PDF --><input
+            <input
               type="file"
               id="file-input"
               class="hidden"
@@ -157,14 +168,52 @@
 
         <!-- ETAPA 3: RESULTADO -->
         <div id="result-step" class="hidden space-y-4 text-center">
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <!-- O botão de download agora é um <button> genérico; a ação é definida no JS --><button
-              id="download-button"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition-colors no-underline"
+          <!-- INÍCIO DA NOVA FUNCIONALIDADE: OPÇÕES DE EXPORTAÇÃO -->
+          <div
+            id="export-options"
+            class="bg-gray-50 border border-gray-200 rounded-lg p-4 max-w-md mx-auto space-y-4 text-left shadow-sm"
+          >
+            <h3 class="text-lg font-semibold text-gray-800 text-center">
+              Opções de Exportação
+            </h3>
+            <div>
+              <label
+                for="export-filename-input"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Nome do Arquivo (sem extensão)</label
+              >
+              <input
+                type="text"
+                id="export-filename-input"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label
+                for="export-format-select"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Formato de Saída</label
+              >
+              <select
+                id="export-format-select"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="png">Imagem PNG</option>
+                <option value="pdf">Documento PDF</option>
+              </select>
+            </div>
+            <button
+              id="export-button"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition-colors text-base"
             >
-              Baixar Resultado
+              Confirmar e Baixar
             </button>
-            <!-- NOVO BOTÃO: Editar outra página --><button
+          </div>
+          <!-- FIM DA NOVA FUNCIONALIDADE -->
+
+          <!-- Botões de ação restantes -->
+          <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button
               id="edit-another-page-button"
               class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
             >
@@ -178,17 +227,16 @@
             </button>
           </div>
 
-          <h2 id="result-title" class="text-2xl font-bold text-gray-800">
+          <h2 id="result-title" class="text-2xl font-bold text-gray-800 pt-4">
             Resultado Corrigido
           </h2>
-          <!-- INÍCIO DA CORREÇÃO: O canvas de resultado e a div modal estavam faltando -->
           <div class="flex justify-center">
             <canvas id="result-canvas"></canvas>
           </div>
         </div>
       </main>
 
-      <!-- MODAL DE CONFIRMAÇÃO (Reinserido) -->
+      <!-- MODAL DE CONFIRMAÇÃO -->
       <div
         id="modal-overlay"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden"
@@ -219,7 +267,6 @@
           </div>
         </div>
       </div>
-      <!-- FIM DA CORREÇÃO -->
     </div>
 
     <script src="js/script.js"></script>

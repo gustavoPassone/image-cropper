@@ -27,11 +27,15 @@ const cancelPdfPreviewButton = document.getElementById("cancel-pdf-preview");
 
 const resultCanvas = document.getElementById("result-canvas");
 const resultTitle = document.getElementById("result-title"); // Título do resultado
-let downloadButton = document.getElementById("download-button"); // Use 'let' para reatribuir
 const startOverButton = document.getElementById("start-over-button");
 const editAnotherPageButton = document.getElementById(
   "edit-another-page-button"
-); // Novo botão
+);
+
+// NOVAS Referências para Opções de Exportação
+const exportFilenameInput = document.getElementById("export-filename-input");
+const exportFormatSelect = document.getElementById("export-format-select");
+const exportButton = document.getElementById("export-button");
 
 const modalOverlay = document.getElementById("modal-overlay");
 const modalBtnYes = document.getElementById("modal-btn-yes");
@@ -40,7 +44,7 @@ const modalBtnNo = document.getElementById("modal-btn-no");
 // --- Variáveis de Estado ---
 let originalImage; // O objeto Image() (renderizado do PDF ou da Imagem)
 let originalFileName = "";
-let originalFileType = "image/png"; // NOVO: 'image/png' ou 'application/pdf'
+let originalFileType = "image/png"; // 'image/png' ou 'application/pdf'
 let displayedImageWidth;
 let displayedImageHeight;
 let points = [];
@@ -63,7 +67,18 @@ const DRAGGING_STROKE_COLOR = "rgba(255, 0, 0, 0.9)";
 
 // --- 1. Inicialização do OpenCV ---
 
+// Flag para evitar que a função seja chamada múltiplas vezes
+let isCvReady = false;
+
+/**
+ * Função de callback executada quando a biblioteca OpenCV.js está carregada e pronta.
+ * É chamada por `Module.onRuntimeInitialized` (definido em index.html).
+ * Atualiza a interface do usuário para permitir o upload de arquivos.
+ */
 function onOpenCvReady() {
+  if (isCvReady) return;
+  isCvReady = true;
+
   // A biblioteca está pronta. Habilita a UI de upload.
   console.log("OpenCV.js está pronto.");
   opencvStatus.textContent = "Bibliotecas carregadas!";
@@ -73,6 +88,25 @@ function onOpenCvReady() {
   uploadButtons.classList.remove("hidden");
 
   setupUploadListeners();
+}
+
+// A inicialização do OpenCV é tratada pelo objeto `Module` em index.html,
+// que chama `onOpenCvReady` quando a biblioteca está pronta.
+
+// Checa se o OpenCV já carregou e inicializou, para o caso de ter acontecido
+// antes deste script ser executado (condição de corrida).
+if (typeof cv !== "undefined") {
+  onOpenCvReady();
+} else {
+  // Adiciona um listener de erro para o caso de falha de rede ao carregar o OpenCV
+  const opencvScript = document.getElementById("opencv-script");
+  if (opencvScript) {
+    opencvScript.addEventListener("error", () => {
+      opencvStatus.textContent = "Falha ao carregar a biblioteca OpenCV.";
+      opencvStatus.classList.remove("text-gray-700");
+      opencvStatus.classList.add("text-red-600");
+    });
+  }
 }
 
 // --- 2. Lógica de Upload (Atualizada para PDF) ---
@@ -121,7 +155,6 @@ function handleFile(file) {
   currentEditingPageNum = 1;
 
   if (fileType.startsWith("image/")) {
-    // --- Caminho 1: É uma IMAGEM (comportamento antigo) ---
     originalImage = new Image();
     originalImage.src = URL.createObjectURL(file);
     originalImage.onload = () => {
@@ -131,7 +164,6 @@ function handleFile(file) {
       alert("Não foi possível carregar a imagem.");
     };
   } else if (fileType === "application/pdf") {
-    // --- Caminho 2: É um PDF (NOVO) ---
     opencvStatus.textContent = "Renderizando PDF..."; // Feedback
     uploadStep.classList.remove("hidden"); // Mostra o status
     editStep.classList.add("hidden");
@@ -147,10 +179,8 @@ function handleFile(file) {
         totalPdfPages = pdfDoc.numPages;
 
         if (totalPdfPages === 1) {
-          // Se tem só 1 página, carrega direto no editor
           await loadPageIntoEditor(1);
         } else {
-          // Se tem > 1 página, mostra a tela de miniaturas
           opencvStatus.textContent = "Carregando miniaturas...";
           await renderPdfThumbnails();
           uploadStep.classList.add("hidden");
@@ -178,7 +208,6 @@ async function loadPageIntoEditor(pageNum) {
     const scale = 2.0; // Renderiza em alta resolução
     const viewport = page.getViewport({ scale });
 
-    // Cria um canvas temporário para renderizar o PDF
     const tempCanvas = document.createElement("canvas");
     const tempCtx = tempCanvas.getContext("2d");
     tempCanvas.width = viewport.width;
@@ -186,11 +215,10 @@ async function loadPageIntoEditor(pageNum) {
 
     await page.render({ canvasContext: tempCtx, viewport }).promise;
 
-    // Converte o canvas do PDF em um objeto Image
     originalImage = new Image();
     originalImage.src = tempCanvas.toDataURL("image/png");
     originalImage.onload = () => {
-      showEditScreen(); // Mostra a tela de edição
+      showEditScreen();
     };
     originalImage.onerror = () => {
       alert("Não foi possível carregar a imagem do PDF.");
@@ -210,7 +238,6 @@ async function renderPdfThumbnails() {
   for (let i = 1; i <= totalPdfPages; i++) {
     const pageNum = i;
 
-    // Cria os elementos da miniatura
     const wrapper = document.createElement("div");
     wrapper.className = "thumbnail-item";
 
@@ -218,16 +245,13 @@ async function renderPdfThumbnails() {
     const p = document.createElement("p");
     p.textContent = `Página ${pageNum}`;
 
-    // Adiciona o listener de clique
     wrapper.addEventListener("click", () => {
       pdfPreviewStep.classList.add("hidden");
-      // Mostra um feedback de carregamento
       opencvStatus.textContent = `Carregando página ${pageNum}...`;
       uploadStep.classList.remove("hidden");
       loadPageIntoEditor(pageNum);
     });
 
-    // Renderiza a miniatura
     try {
       const page = await loadedPdf.getPage(pageNum);
       const viewport = page.getViewport({ scale: 0.3 }); // Escala pequena para miniatura
@@ -248,7 +272,6 @@ async function renderPdfThumbnails() {
   }
 }
 
-// Função auxiliar para mostrar a tela de edição
 function showEditScreen() {
   uploadStep.classList.add("hidden");
   resultStep.classList.add("hidden");
@@ -257,8 +280,6 @@ function showEditScreen() {
 }
 
 // --- 3. Lógica de Edição (Canvas) ---
-// (Nenhuma mudança necessária aqui, `initializeCanvas` e `drawCanvas`
-//  funcionam com o `originalImage` independentemente da origem)
 
 function getRotatedDimensions() {
   const isRotated90or270 = rotationAngle % 180 !== 0;
@@ -274,7 +295,7 @@ function initializeCanvas() {
   const maxWidth = canvasWrapper.clientWidth * 0.9;
   const maxHeight = window.innerHeight * 0.7;
 
-  const rotatedDims = getRotatedDimensions(); // Rotação é 0 aqui na inicialização
+  const rotatedDims = getRotatedDimensions();
   let originalRotatedWidth = rotatedDims.width;
   let originalRotatedHeight = rotatedDims.height;
 
@@ -293,13 +314,10 @@ function initializeCanvas() {
   editCanvas.width = displayedImageWidth;
   editCanvas.height = displayedImageHeight;
 
-  // --- INÍCIO DA NOVA LÓGICA DE AUTO-CROP ---
-  // (Nota: Isso só roda em rotação 0, pois é a inicialização)
   let autoPoints = findDocumentCorners(originalImage);
 
   if (autoPoints && autoPoints.length === 4) {
     console.log("Detecção automática de cantos BEM SUCEDIDA.");
-    // Converte os pontos (na escala original) para a escala do canvas (usando o scaleFactor uniforme)
     points = [
       { x: autoPoints[0].x * scaleFactor, y: autoPoints[0].y * scaleFactor }, // tl
       { x: autoPoints[1].x * scaleFactor, y: autoPoints[1].y * scaleFactor }, // tr
@@ -307,7 +325,6 @@ function initializeCanvas() {
       { x: autoPoints[3].x * scaleFactor, y: autoPoints[3].y * scaleFactor }, // bl
     ];
 
-    // Check de sanidade. Se os pontos forem ruins, volte ao manual.
     if (
       points[2].x > displayedImageWidth ||
       points[2].y > displayedImageHeight ||
@@ -316,11 +333,10 @@ function initializeCanvas() {
       console.warn(
         "Pontos automáticos parecem inválidos, revertendo para manual."
       );
-      autoPoints = null; // Força o fallback
+      autoPoints = null;
     }
   }
 
-  // Fallback: Se a detecção falhar (autoPoints == null) ou se não for tentada
   if (!autoPoints || autoPoints.length !== 4) {
     console.log(
       "Detecção automática FALHOU ou foi invalidada. Usando margem manual."
@@ -328,13 +344,12 @@ function initializeCanvas() {
     const margin = Math.min(displayedImageWidth, displayedImageHeight) * 0.1;
 
     points = [
-      { x: margin, y: margin }, // Canto superior esquerdo
-      { x: displayedImageWidth - margin, y: margin }, // Canto superior direito
-      { x: displayedImageWidth - margin, y: displayedImageHeight - margin }, // Canto inferior direito
-      { x: margin, y: displayedImageHeight - margin }, // Canto inferior esquerdo
+      { x: margin, y: margin },
+      { x: displayedImageWidth - margin, y: margin },
+      { x: displayedImageWidth - margin, y: displayedImageHeight - margin },
+      { x: margin, y: displayedImageHeight - margin },
     ];
   }
-  // --- FIM DA NOVA LÓGICA DE AUTO-CROP ---
 
   drawCanvas();
 }
@@ -386,8 +401,6 @@ function drawCanvas() {
   });
 }
 
-// --- Lógica de Arrastar Pontos ---
-
 function getCanvasPos(e) {
   const rect = editCanvas.getBoundingClientRect();
   canvasScale = editCanvas.width / rect.width;
@@ -411,9 +424,6 @@ function findPoint(x, y) {
 }
 
 function onDown(e) {
-  if (rotationAngle !== 0) {
-    if (draggingPoint === null) drawCanvas();
-  }
   e.preventDefault();
   const pos = getCanvasPos(e);
   draggingPoint = findPoint(pos.x, pos.y);
@@ -444,7 +454,6 @@ function rotateImage() {
   initializeCanvas();
 }
 
-// --- NOVA FUNÇÃO DE DETECÇÃO DE BORDAS ---
 function findDocumentCorners(imageElement) {
   let src;
   let gray;
@@ -465,7 +474,6 @@ function findDocumentCorners(imageElement) {
 
     contours = new cv.MatVector();
     hierarchy = new cv.Mat();
-    // Usamos RETR_EXTERNAL para pegar apenas os contornos externos (o documento)
     cv.findContours(
       edged,
       contours,
@@ -481,18 +489,15 @@ function findDocumentCorners(imageElement) {
       let cnt = contours.get(i);
       let area = cv.contourArea(cnt);
 
-      // Filtra contornos pequenos
       if (area > (src.rows * src.cols) / 20) {
-        // Deve ocupar pelo menos 5% da imagem
         let peri = cv.arcLength(cnt, true);
         let approx = new cv.Mat();
         cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
 
-        // Procura por um quadrilátero (4 lados) que seja o maior
         if (approx.rows === 4 && area > maxArea) {
           maxArea = area;
           if (bestApprox) {
-            bestApprox.delete(); // Limpa o anterior
+            bestApprox.delete();
           }
           bestApprox = approx;
         } else {
@@ -503,7 +508,6 @@ function findDocumentCorners(imageElement) {
     }
 
     if (bestApprox) {
-      // Nós temos um contorno de 4 pontos
       let pts = [
         { x: bestApprox.data32S[0], y: bestApprox.data32S[1] },
         { x: bestApprox.data32S[2], y: bestApprox.data32S[3] },
@@ -511,26 +515,21 @@ function findDocumentCorners(imageElement) {
         { x: bestApprox.data32S[6], y: bestApprox.data32S[7] },
       ];
 
-      // Ordena os pontos para [tl, tr, br, bl]
-      // 1. Ordena por Y (pega os 2 de cima, os 2 de baixo)
       pts.sort((a, b) => a.y - b.y);
-      // 2. Ordena os 2 de cima por X (tl, tr)
       let top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
-      // 3. Ordena os 2 de baixo por X (bl, br)
       let bottom = pts.slice(2, 4).sort((a, b) => a.x - b.x);
 
-      let orderedPoints = [top[0], top[1], bottom[1], bottom[0]]; // tl, tr, br, bl
+      let orderedPoints = [top[0], top[1], bottom[1], bottom[0]];
 
       bestApprox.delete();
       return orderedPoints;
     }
 
-    return null; // Nenhum documento encontrado
+    return null;
   } catch (error) {
     console.error("Auto-crop falhou:", error);
     return null;
   } finally {
-    // Limpeza de memória do OpenCV
     if (src) src.delete();
     if (gray) gray.delete();
     if (blurred) blurred.delete();
@@ -541,7 +540,7 @@ function findDocumentCorners(imageElement) {
   }
 }
 
-// --- 4. Processamento com OpenCV.js (Atualizado para salvar PDF) ---
+// --- 4. Processamento com OpenCV.js e Lógica de Exportação ---
 
 function performWarp() {
   try {
@@ -641,51 +640,17 @@ function performWarp() {
     );
     cv.imshow(resultCanvas, dst);
 
-    // --- NOVO: Lógica de Download Condicional ---
-
+    // --- NOVO: Preenche as opções de exportação ---
     const newFileNameBase = originalFileName.split(".").slice(0, -1).join(".");
 
-    // Limpa listeners antigos clonando
-    const newDownloadButton = downloadButton.cloneNode(true);
-    downloadButton.parentNode.replaceChild(newDownloadButton, downloadButton);
-    downloadButton = newDownloadButton; // Atualiza a referência
-
     if (originalFileType === "application/pdf") {
-      // Salvar como PDF
-      const pdfName = newFileNameBase + `-pagina-${currentEditingPageNum}.pdf`;
+      exportFilenameInput.value = `${newFileNameBase}-pagina-${currentEditingPageNum}-corrigido`;
+      exportFormatSelect.value = "pdf";
       resultTitle.textContent = `Resultado Corrigido (Página ${currentEditingPageNum})`;
-      downloadButton.textContent = `Baixar PDF (Página ${currentEditingPageNum})`;
-
-      downloadButton.addEventListener("click", () => {
-        try {
-          const imgData = resultCanvas.toDataURL("image/png");
-          const w = resultCanvas.width;
-          const h = resultCanvas.height;
-          const orientation = w > h ? "l" : "p";
-
-          // Instancia o jsPDF (note o window.jspdf)
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF({ orientation, unit: "px", format: [w, h] });
-
-          pdf.addImage(imgData, "PNG", 0, 0, w, h);
-          pdf.save(pdfName);
-        } catch (e) {
-          console.error("Erro ao gerar PDF:", e);
-          alert("Não foi possível gerar o PDF.");
-        }
-      });
     } else {
-      // Salvar como PNG (comportamento original)
+      exportFilenameInput.value = `${newFileNameBase}-corrigido`;
+      exportFormatSelect.value = "png";
       resultTitle.textContent = `Resultado Corrigido`;
-      downloadButton.textContent = "Baixar Imagem (PNG)";
-      downloadButton.addEventListener("click", () => {
-        const link = document.createElement("a");
-        link.href = resultCanvas.toDataURL("image/png");
-        link.download = newFileNameBase + ".png";
-        link.click();
-        // Limpa o link após o clique
-        setTimeout(() => link.remove(), 100);
-      });
     }
 
     // Limpa a memória
@@ -695,19 +660,53 @@ function performWarp() {
     srcPoints.delete();
     dstPoints.delete();
 
-    // NOVO: Mostra o botão "Editar Outra Página" se aplicável
     if (loadedPdf && totalPdfPages > 1) {
       editAnotherPageButton.classList.remove("hidden");
     } else {
       editAnotherPageButton.classList.add("hidden");
     }
 
-    // Troca para a tela de resultado
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
     console.error("Erro no processamento do OpenCV:", error);
     alert("Ocorreu um erro ao processar a imagem. Tente novamente.");
+  }
+}
+
+function handleExport() {
+  const format = exportFormatSelect.value;
+  const filename = exportFilenameInput.value.trim();
+
+  if (!filename) {
+    alert("Por favor, insira um nome para o arquivo.");
+    exportFilenameInput.focus();
+    return;
+  }
+
+  if (format === "pdf") {
+    try {
+      const imgData = resultCanvas.toDataURL("image/png");
+      const w = resultCanvas.width;
+      const h = resultCanvas.height;
+      const orientation = w > h ? "l" : "p";
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation, unit: "px", format: [w, h] });
+
+      pdf.addImage(imgData, "PNG", 0, 0, w, h);
+      pdf.save(`${filename}.pdf`);
+    } catch (e) {
+      console.error("Erro ao gerar PDF:", e);
+      alert("Não foi possível gerar o PDF.");
+    }
+  } else {
+    // PNG
+    const link = document.createElement("a");
+    link.href = resultCanvas.toDataURL("image/png");
+    link.download = `${filename}.png`;
+    link.click();
+    setTimeout(() => link.remove(), 100);
   }
 }
 
@@ -717,12 +716,11 @@ function resetToUploadScreen() {
   fileInput.value = null;
   originalImage = null;
   originalFileName = "";
-  originalFileType = "image/png"; // Reseta o tipo de arquivo
+  originalFileType = "image/png";
   points = [];
   draggingPoint = null;
   rotationAngle = 0;
 
-  // Reseta estado do PDF
   loadedPdf = null;
   totalPdfPages = 0;
   currentEditingPageNum = 1;
@@ -731,15 +729,13 @@ function resetToUploadScreen() {
 
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
-  pdfPreviewStep.classList.add("hidden"); // Esconde a tela de miniaturas
+  pdfPreviewStep.classList.add("hidden");
   uploadStep.classList.remove("hidden");
 
-  // Reseta o status do upload
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.add("text-green-600");
 }
 
-// --- Lógica do Modal ---
 function handleModalKeydown(e) {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -778,13 +774,12 @@ cropButton.addEventListener("click", performWarp);
 rotateButton.addEventListener("click", rotateImage);
 cancelButton.addEventListener("click", showModal);
 startOverButton.addEventListener("click", resetToUploadScreen);
+exportButton.addEventListener("click", handleExport); // NOVO Listener para exportar
 
-// Novos Listeners
 cancelPdfPreviewButton.addEventListener("click", resetToUploadScreen);
 editAnotherPageButton.addEventListener("click", () => {
   resultStep.classList.add("hidden");
   pdfPreviewStep.classList.remove("hidden");
-  // Não precisa renderizar miniaturas de novo, elas já estão lá
 });
 
 editCanvas.addEventListener("mousedown", onDown);
