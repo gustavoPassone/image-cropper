@@ -24,6 +24,9 @@ const cancelButton = document.getElementById("cancel-button");
 const pdfPreviewStep = document.getElementById("pdf-preview-step");
 const pdfThumbnailsContainer = document.getElementById("pdf-thumbnails");
 const cancelPdfPreviewButton = document.getElementById("cancel-pdf-preview");
+const finishAndDownloadButton = document.getElementById(
+  "finish-and-download-button"
+);
 
 const resultCanvas = document.getElementById("result-canvas");
 const resultTitle = document.getElementById("result-title"); // Título do resultado
@@ -56,6 +59,7 @@ let canvasScale = 1;
 let loadedPdf = null;
 let totalPdfPages = 0;
 let currentEditingPageNum = 1;
+let editedPages = new Map(); // Armazena as páginas editadas (pageNum -> dataURL)
 
 // ... Constantes de desenho (POINT_RADIUS, etc.) ...
 const POINT_RADIUS = 25;
@@ -70,16 +74,10 @@ const DRAGGING_STROKE_COLOR = "rgba(255, 0, 0, 0.9)";
 // Flag para evitar que a função seja chamada múltiplas vezes
 let isCvReady = false;
 
-/**
- * Função de callback executada quando a biblioteca OpenCV.js está carregada e pronta.
- * É chamada por `Module.onRuntimeInitialized` (definido em index.html).
- * Atualiza a interface do usuário para permitir o upload de arquivos.
- */
 function onOpenCvReady() {
   if (isCvReady) return;
   isCvReady = true;
 
-  // A biblioteca está pronta. Habilita a UI de upload.
   console.log("OpenCV.js está pronto.");
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.remove("text-gray-700");
@@ -90,15 +88,9 @@ function onOpenCvReady() {
   setupUploadListeners();
 }
 
-// A inicialização do OpenCV é tratada pelo objeto `Module` em index.html,
-// que chama `onOpenCvReady` quando a biblioteca está pronta.
-
-// Checa se o OpenCV já carregou e inicializou, para o caso de ter acontecido
-// antes deste script ser executado (condição de corrida).
 if (typeof cv !== "undefined") {
   onOpenCvReady();
 } else {
-  // Adiciona um listener de erro para o caso de falha de rede ao carregar o OpenCV
   const opencvScript = document.getElementById("opencv-script");
   if (opencvScript) {
     opencvScript.addEventListener("error", () => {
@@ -138,7 +130,6 @@ function setupUploadListeners() {
   });
 }
 
-// Função unificada para lidar com Imagem ou PDF
 function handleFile(file) {
   const fileType = file.type;
 
@@ -146,13 +137,11 @@ function handleFile(file) {
     alert("Por favor, selecione um arquivo de imagem (PNG, JPG) ou PDF.");
     return;
   }
+  resetToUploadScreen(); // Garante que o estado anterior seja limpo
 
   originalFileName = file.name;
-  originalFileType = file.type; // Armazena o tipo de arquivo
+  originalFileType = file.type;
   rotationAngle = 0;
-  loadedPdf = null; // Reseta o PDF carregado
-  totalPdfPages = 0;
-  currentEditingPageNum = 1;
 
   if (fileType.startsWith("image/")) {
     originalImage = new Image();
@@ -164,8 +153,8 @@ function handleFile(file) {
       alert("Não foi possível carregar a imagem.");
     };
   } else if (fileType === "application/pdf") {
-    opencvStatus.textContent = "Renderizando PDF..."; // Feedback
-    uploadStep.classList.remove("hidden"); // Mostra o status
+    opencvStatus.textContent = "Renderizando PDF...";
+    uploadStep.classList.remove("hidden");
     editStep.classList.add("hidden");
     pdfPreviewStep.classList.add("hidden");
 
@@ -175,17 +164,18 @@ function handleFile(file) {
         const arrayBuffer = e.target.result;
         const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
 
-        loadedPdf = pdfDoc; // Armazena o documento PDF
+        loadedPdf = pdfDoc;
         totalPdfPages = pdfDoc.numPages;
 
         if (totalPdfPages === 1) {
           await loadPageIntoEditor(1);
         } else {
+          finishAndDownloadButton.classList.remove("hidden");
           opencvStatus.textContent = "Carregando miniaturas...";
           await renderPdfThumbnails();
           uploadStep.classList.add("hidden");
           pdfPreviewStep.classList.remove("hidden");
-          opencvStatus.textContent = "Bibliotecas carregadas!"; // Reseta o status
+          opencvStatus.textContent = "Bibliotecas carregadas!";
         }
       } catch (error) {
         console.error("Erro ao carregar PDF:", error);
@@ -197,7 +187,6 @@ function handleFile(file) {
   }
 }
 
-// NOVO: Renderiza a página do PDF no editor
 async function loadPageIntoEditor(pageNum) {
   if (!loadedPdf) return;
 
@@ -205,7 +194,7 @@ async function loadPageIntoEditor(pageNum) {
 
   try {
     const page = await loadedPdf.getPage(pageNum);
-    const scale = 2.0; // Renderiza em alta resolução
+    const scale = 2.0;
     const viewport = page.getViewport({ scale });
 
     const tempCanvas = document.createElement("canvas");
@@ -230,16 +219,18 @@ async function loadPageIntoEditor(pageNum) {
   }
 }
 
-// NOVO: Renderiza as miniaturas de todas as páginas
 async function renderPdfThumbnails() {
   if (!loadedPdf) return;
-  pdfThumbnailsContainer.innerHTML = ""; // Limpa miniaturas antigas
+  pdfThumbnailsContainer.innerHTML = "";
 
   for (let i = 1; i <= totalPdfPages; i++) {
     const pageNum = i;
-
     const wrapper = document.createElement("div");
     wrapper.className = "thumbnail-item";
+    wrapper.id = `thumbnail-item-${pageNum}`;
+    if (editedPages.has(pageNum)) {
+      wrapper.classList.add("edited");
+    }
 
     const canvas = document.createElement("canvas");
     const p = document.createElement("p");
@@ -252,22 +243,46 @@ async function renderPdfThumbnails() {
       loadPageIntoEditor(pageNum);
     });
 
+    wrapper.appendChild(canvas);
+    wrapper.appendChild(p);
+    pdfThumbnailsContainer.appendChild(wrapper);
+
+    // Renderiza a thumbnail
+    updateThumbnail(pageNum);
+  }
+}
+
+async function updateThumbnail(pageNum, dataUrl = null) {
+  const wrapper = document.getElementById(`thumbnail-item-${pageNum}`);
+  if (!wrapper) return;
+  const canvas = wrapper.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const renderImage = (src) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      const thumbWidth = 120;
+      const scale = thumbWidth / img.width;
+      canvas.width = thumbWidth;
+      canvas.height = img.height * scale;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+  };
+
+  if (dataUrl || editedPages.has(pageNum)) {
+    renderImage(dataUrl || editedPages.get(pageNum));
+    wrapper.classList.add("edited");
+  } else if (loadedPdf) {
     try {
       const page = await loadedPdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 0.3 }); // Escala pequena para miniatura
+      const viewport = page.getViewport({ scale: 0.3 });
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d");
       await page.render({ canvasContext: ctx, viewport }).promise;
-
-      wrapper.appendChild(canvas);
-      wrapper.appendChild(p);
-      pdfThumbnailsContainer.appendChild(wrapper);
     } catch (error) {
       console.error(`Erro ao renderizar miniatura ${pageNum}:`, error);
-      p.textContent = `Erro Pág. ${pageNum}`;
-      wrapper.appendChild(p);
-      pdfThumbnailsContainer.appendChild(wrapper);
+      wrapper.querySelector("p").textContent = `Erro Pág. ${pageNum}`;
     }
   }
 }
@@ -291,58 +306,43 @@ function getRotatedDimensions() {
 
 function initializeCanvas() {
   if (!originalImage) return;
-
   const maxWidth = canvasWrapper.clientWidth * 0.9;
   const maxHeight = window.innerHeight * 0.7;
-
   const rotatedDims = getRotatedDimensions();
   let originalRotatedWidth = rotatedDims.width;
   let originalRotatedHeight = rotatedDims.height;
-
-  let scaleFactor = 1;
-
-  if (originalRotatedWidth > maxWidth || originalRotatedHeight > maxHeight) {
-    scaleFactor = Math.min(
-      maxWidth / originalRotatedWidth,
-      maxHeight / originalRotatedHeight
-    );
-  }
+  let scaleFactor = Math.min(
+    1,
+    maxWidth / originalRotatedWidth,
+    maxHeight / originalRotatedHeight
+  );
 
   displayedImageWidth = originalRotatedWidth * scaleFactor;
   displayedImageHeight = originalRotatedHeight * scaleFactor;
-
   editCanvas.width = displayedImageWidth;
   editCanvas.height = displayedImageHeight;
 
   let autoPoints = findDocumentCorners(originalImage);
-
   if (autoPoints && autoPoints.length === 4) {
-    console.log("Detecção automática de cantos BEM SUCEDIDA.");
-    points = [
-      { x: autoPoints[0].x * scaleFactor, y: autoPoints[0].y * scaleFactor }, // tl
-      { x: autoPoints[1].x * scaleFactor, y: autoPoints[1].y * scaleFactor }, // tr
-      { x: autoPoints[2].x * scaleFactor, y: autoPoints[2].y * scaleFactor }, // br
-      { x: autoPoints[3].x * scaleFactor, y: autoPoints[3].y * scaleFactor }, // bl
-    ];
-
+    points = autoPoints.map((p) => ({
+      x: p.x * scaleFactor,
+      y: p.y * scaleFactor,
+    }));
     if (
-      points[2].x > displayedImageWidth ||
-      points[2].y > displayedImageHeight ||
-      points[0].x < 0
+      points.some(
+        (p) =>
+          p.x > displayedImageWidth ||
+          p.y > displayedImageHeight ||
+          p.x < 0 ||
+          p.y < 0
+      )
     ) {
-      console.warn(
-        "Pontos automáticos parecem inválidos, revertendo para manual."
-      );
-      autoPoints = null;
+      autoPoints = null; // Invalida pontos fora da tela
     }
   }
 
   if (!autoPoints || autoPoints.length !== 4) {
-    console.log(
-      "Detecção automática FALHOU ou foi invalidada. Usando margem manual."
-    );
     const margin = Math.min(displayedImageWidth, displayedImageHeight) * 0.1;
-
     points = [
       { x: margin, y: margin },
       { x: displayedImageWidth - margin, y: margin },
@@ -350,7 +350,6 @@ function initializeCanvas() {
       { x: margin, y: displayedImageHeight - margin },
     ];
   }
-
   drawCanvas();
 }
 
@@ -360,7 +359,6 @@ function drawCanvas() {
   editCtx.save();
   editCtx.translate(editCanvas.width / 2, editCanvas.height / 2);
   editCtx.rotate((rotationAngle * Math.PI) / 180);
-
   const isRotated90or270 = rotationAngle % 180 !== 0;
   let imageWidth = isRotated90or270
     ? displayedImageHeight
@@ -368,7 +366,6 @@ function drawCanvas() {
   let imageHeight = isRotated90or270
     ? displayedImageWidth
     : displayedImageHeight;
-
   editCtx.drawImage(
     originalImage,
     -imageWidth / 2,
@@ -376,7 +373,6 @@ function drawCanvas() {
     imageWidth,
     imageHeight
   );
-
   editCtx.restore();
 
   editCtx.strokeStyle = POINT_STROKE_COLOR;
@@ -416,9 +412,7 @@ function findPoint(x, y) {
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     const dist = Math.hypot(p.x - x, p.y - y);
-    if (dist < CLICK_RADIUS) {
-      return i;
-    }
+    if (dist < CLICK_RADIUS) return i;
   }
   return null;
 }
@@ -427,9 +421,7 @@ function onDown(e) {
   e.preventDefault();
   const pos = getCanvasPos(e);
   draggingPoint = findPoint(pos.x, pos.y);
-  if (draggingPoint !== null) {
-    drawCanvas();
-  }
+  if (draggingPoint !== null) drawCanvas();
 }
 
 function onMove(e) {
@@ -455,6 +447,7 @@ function rotateImage() {
 }
 
 function findDocumentCorners(imageElement) {
+  // ... (código existente sem alterações)
   let src;
   let gray;
   let blurred;
@@ -462,7 +455,6 @@ function findDocumentCorners(imageElement) {
   let contours;
   let hierarchy;
   let bestApprox;
-
   try {
     src = cv.imread(imageElement);
     gray = new cv.Mat();
@@ -471,7 +463,6 @@ function findDocumentCorners(imageElement) {
     cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
     edged = new cv.Mat();
     cv.Canny(blurred, edged, 75, 200);
-
     contours = new cv.MatVector();
     hierarchy = new cv.Mat();
     cv.findContours(
@@ -481,19 +472,15 @@ function findDocumentCorners(imageElement) {
       cv.RETR_EXTERNAL,
       cv.CHAIN_APPROX_SIMPLE
     );
-
     let maxArea = 0;
     bestApprox = null;
-
     for (let i = 0; i < contours.size(); ++i) {
       let cnt = contours.get(i);
       let area = cv.contourArea(cnt);
-
       if (area > (src.rows * src.cols) / 20) {
         let peri = cv.arcLength(cnt, true);
         let approx = new cv.Mat();
         cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
-
         if (approx.rows === 4 && area > maxArea) {
           maxArea = area;
           if (bestApprox) {
@@ -506,7 +493,6 @@ function findDocumentCorners(imageElement) {
       }
       cnt.delete();
     }
-
     if (bestApprox) {
       let pts = [
         { x: bestApprox.data32S[0], y: bestApprox.data32S[1] },
@@ -514,17 +500,13 @@ function findDocumentCorners(imageElement) {
         { x: bestApprox.data32S[4], y: bestApprox.data32S[5] },
         { x: bestApprox.data32S[6], y: bestApprox.data32S[7] },
       ];
-
       pts.sort((a, b) => a.y - b.y);
       let top = pts.slice(0, 2).sort((a, b) => a.x - b.x);
       let bottom = pts.slice(2, 4).sort((a, b) => a.x - b.x);
-
       let orderedPoints = [top[0], top[1], bottom[1], bottom[0]];
-
       bestApprox.delete();
       return orderedPoints;
     }
-
     return null;
   } catch (error) {
     console.error("Auto-crop falhou:", error);
@@ -540,109 +522,92 @@ function findDocumentCorners(imageElement) {
   }
 }
 
-// --- 4. Processamento com OpenCV.js e Lógica de Exportação ---
+// --- 4. Processamento, Salvamento e Exportação ---
 
-function performWarp() {
+// Função auxiliar para obter a matriz de transformação e o resultado do warp
+function getWarpedResult() {
+  const origW = originalImage.width,
+    origH = originalImage.height;
+  const rotatedDims = getRotatedDimensions();
+  const originalRotatedWidth = rotatedDims.width,
+    originalRotatedHeight = rotatedDims.height;
+  const originalToDisplayedScaleX = originalRotatedWidth / displayedImageWidth;
+  const originalToDisplayedScaleY =
+    originalRotatedHeight / displayedImageHeight;
+  const pointsOnRotatedOriginal = points.map((p) => ({
+    x: p.x * originalToDisplayedScaleX,
+    y: p.y * originalToDisplayedScaleY,
+  }));
+
+  let finalPointsOriginalScale = [];
+  pointsOnRotatedOriginal.forEach((p) => {
+    let x, y;
+    if (rotationAngle === 90) {
+      x = p.y;
+      y = origH - p.x;
+    } else if (rotationAngle === 180) {
+      x = origW - p.x;
+      y = origH - p.y;
+    } else if (rotationAngle === 270) {
+      x = origW - p.y;
+      y = p.x;
+    } else {
+      x = p.x;
+      y = p.y;
+    }
+    finalPointsOriginalScale.push(x, y);
+  });
+
+  const p0 = { x: finalPointsOriginalScale[0], y: finalPointsOriginalScale[1] },
+    p1 = { x: finalPointsOriginalScale[2], y: finalPointsOriginalScale[3] };
+  const p2 = { x: finalPointsOriginalScale[4], y: finalPointsOriginalScale[5] },
+    p3 = { x: finalPointsOriginalScale[6], y: finalPointsOriginalScale[7] };
+  const w1 = Math.hypot(p0.x - p1.x, p0.y - p1.y),
+    w2 = Math.hypot(p3.x - p2.x, p3.y - p2.y);
+  const h1 = Math.hypot(p0.x - p3.x, p0.y - p3.y),
+    h2 = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  const outWidth = Math.round(Math.max(w1, w2)),
+    outHeight = Math.round(Math.max(h1, h2));
+
+  let src = cv.imread(originalImage);
+  let srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, finalPointsOriginalScale);
+  let dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+    0,
+    0,
+    outWidth - 1,
+    0,
+    outWidth - 1,
+    outHeight - 1,
+    0,
+    outHeight - 1,
+  ]);
+  let M = cv.getPerspectiveTransform(srcPoints, dstPoints);
+  let dst = new cv.Mat();
+  let dsize = new cv.Size(outWidth, outHeight);
+  cv.warpPerspective(
+    src,
+    dst,
+    M,
+    dsize,
+    cv.INTER_LINEAR,
+    cv.BORDER_CONSTANT,
+    new cv.Scalar()
+  );
+
+  src.delete();
+  M.delete();
+  srcPoints.delete();
+  dstPoints.delete();
+  return dst;
+}
+
+// Para imagens únicas ou PDFs de página única
+function processAndShowFinalResult() {
   try {
-    const origW = originalImage.width;
-    const origH = originalImage.height;
-
-    const rotatedDims = getRotatedDimensions();
-    const originalRotatedWidth = rotatedDims.width;
-    const originalRotatedHeight = rotatedDims.height;
-
-    const originalToDisplayedScaleX =
-      originalRotatedWidth / displayedImageWidth;
-    const originalToDisplayedScaleY =
-      originalRotatedHeight / displayedImageHeight;
-
-    const pointsOnRotatedOriginal = points.map((p) => ({
-      x: p.x * originalToDisplayedScaleX,
-      y: p.y * originalToDisplayedScaleY,
-    }));
-
-    const angle = rotationAngle;
-    let finalPointsOriginalScale = [];
-
-    pointsOnRotatedOriginal.forEach((p) => {
-      let x, y;
-      if (angle === 90) {
-        x = p.y;
-        y = origH - p.x;
-      } else if (angle === 180) {
-        x = origW - p.x;
-        y = origH - p.y;
-      } else if (angle === 270) {
-        x = origW - p.y;
-        y = p.x;
-      } else {
-        x = p.x;
-        y = p.y;
-      }
-      finalPointsOriginalScale.push(x, y);
-    });
-
-    let src = cv.imread(originalImage);
-    let srcPoints = cv.matFromArray(
-      4,
-      1,
-      cv.CV_32FC2,
-      finalPointsOriginalScale
-    );
-
-    let p0_orig = {
-      x: finalPointsOriginalScale[0],
-      y: finalPointsOriginalScale[1],
-    };
-    let p1_orig = {
-      x: finalPointsOriginalScale[2],
-      y: finalPointsOriginalScale[3],
-    };
-    let p2_orig = {
-      x: finalPointsOriginalScale[4],
-      y: finalPointsOriginalScale[5],
-    };
-    let p3_orig = {
-      x: finalPointsOriginalScale[6],
-      y: finalPointsOriginalScale[7],
-    };
-
-    let w1 = Math.hypot(p0_orig.x - p1_orig.x, p0_orig.y - p1_orig.y);
-    let w2 = Math.hypot(p3_orig.x - p2_orig.x, p3_orig.y - p2_orig.y);
-    let h1 = Math.hypot(p0_orig.x - p3_orig.x, p0_orig.y - p3_orig.y);
-    let h2 = Math.hypot(p1_orig.x - p2_orig.x, p1_orig.y - p2_orig.y);
-
-    let outWidth = Math.round(Math.max(w1, w2));
-    let outHeight = Math.round(Math.max(h1, h2));
-
-    let dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-      0,
-      0,
-      outWidth - 1,
-      0,
-      outWidth - 1,
-      outHeight - 1,
-      0,
-      outHeight - 1,
-    ]);
-
-    let M = cv.getPerspectiveTransform(srcPoints, dstPoints);
-    let dst = new cv.Mat();
-    let dsize = new cv.Size(outWidth, outHeight);
-    cv.warpPerspective(
-      src,
-      dst,
-      M,
-      dsize,
-      cv.INTER_LINEAR,
-      cv.BORDER_CONSTANT,
-      new cv.Scalar()
-    );
+    const dst = getWarpedResult();
     cv.imshow(resultCanvas, dst);
 
-    // --- NOVO: Preenche as opções de exportação ---
     const newFileNameBase = originalFileName.split(".").slice(0, -1).join(".");
-
     if (originalFileType === "application/pdf") {
       exportFilenameInput.value = `${newFileNameBase}-pagina-${currentEditingPageNum}-corrigido`;
       exportFormatSelect.value = "pdf";
@@ -653,19 +618,12 @@ function performWarp() {
       resultTitle.textContent = `Resultado Corrigido`;
     }
 
-    // Limpa a memória
-    src.delete();
     dst.delete();
-    M.delete();
-    srcPoints.delete();
-    dstPoints.delete();
-
     if (loadedPdf && totalPdfPages > 1) {
       editAnotherPageButton.classList.remove("hidden");
     } else {
       editAnotherPageButton.classList.add("hidden");
     }
-
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
@@ -674,26 +632,95 @@ function performWarp() {
   }
 }
 
+// Para páginas de um PDF de múltiplas páginas
+function savePageAndReturnToThumbnails() {
+  try {
+    const dst = getWarpedResult();
+    const tempCanvas = document.createElement("canvas");
+    cv.imshow(tempCanvas, dst);
+    const dataUrl = tempCanvas.toDataURL("image/png");
+
+    editedPages.set(currentEditingPageNum, dataUrl);
+    updateThumbnail(currentEditingPageNum, dataUrl);
+
+    dst.delete();
+
+    editStep.classList.add("hidden");
+    pdfPreviewStep.classList.remove("hidden");
+  } catch (error) {
+    console.error("Erro ao salvar página:", error);
+    alert("Não foi possível salvar as alterações desta página.");
+  }
+}
+
+async function buildAndDownloadFinalPdf() {
+  opencvStatus.textContent = "Construindo PDF final...";
+  uploadStep.classList.remove("hidden");
+  pdfPreviewStep.classList.add("hidden");
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    pdf.deletePage(1); // Começa com um PDF em branco
+
+    const loadImage = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    for (let pageNum = 1; pageNum <= totalPdfPages; pageNum++) {
+      opencvStatus.textContent = `Processando página ${pageNum}/${totalPdfPages}...`;
+      let dataUrl;
+      if (editedPages.has(pageNum)) {
+        dataUrl = editedPages.get(pageNum);
+      } else {
+        const page = await loadedPdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport })
+          .promise;
+        dataUrl = canvas.toDataURL("image/png");
+      }
+      const img = await loadImage(dataUrl);
+      const w = img.width;
+      const h = img.height;
+      const orientation = w > h ? "l" : "p";
+      pdf.addPage([w, h], orientation);
+      pdf.addImage(img, "PNG", 0, 0, w, h, undefined, "FAST");
+    }
+
+    const newFileNameBase = originalFileName.split(".").slice(0, -1).join(".");
+    pdf.save(`${newFileNameBase}-editado.pdf`);
+    resetToUploadScreen();
+  } catch (error) {
+    console.error("Erro ao construir PDF final:", error);
+    alert("Ocorreu um erro ao gerar o PDF final.");
+    resetToUploadScreen();
+  }
+}
+
 function handleExport() {
+  // ... (código existente sem alterações)
   const format = exportFormatSelect.value;
   const filename = exportFilenameInput.value.trim();
-
   if (!filename) {
     alert("Por favor, insira um nome para o arquivo.");
     exportFilenameInput.focus();
     return;
   }
-
   if (format === "pdf") {
     try {
       const imgData = resultCanvas.toDataURL("image/png");
       const w = resultCanvas.width;
       const h = resultCanvas.height;
       const orientation = w > h ? "l" : "p";
-
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation, unit: "px", format: [w, h] });
-
       pdf.addImage(imgData, "PNG", 0, 0, w, h);
       pdf.save(`${filename}.pdf`);
     } catch (e) {
@@ -701,7 +728,6 @@ function handleExport() {
       alert("Não foi possível gerar o PDF.");
     }
   } else {
-    // PNG
     const link = document.createElement("a");
     link.href = resultCanvas.toDataURL("image/png");
     link.download = `${filename}.png`;
@@ -720,18 +746,16 @@ function resetToUploadScreen() {
   points = [];
   draggingPoint = null;
   rotationAngle = 0;
-
   loadedPdf = null;
   totalPdfPages = 0;
   currentEditingPageNum = 1;
-
+  editedPages.clear();
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
-
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
   pdfPreviewStep.classList.add("hidden");
   uploadStep.classList.remove("hidden");
-
+  finishAndDownloadButton.classList.add("hidden");
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.add("text-green-600");
 }
@@ -745,38 +769,40 @@ function handleModalKeydown(e) {
     modalBtnNo.click();
   }
 }
-
 function showModal() {
   modalOverlay.classList.remove("hidden");
   window.addEventListener("keydown", handleModalKeydown);
   modalBtnYes.focus();
 }
-
 function hideModal() {
   modalOverlay.classList.add("hidden");
   window.removeEventListener("keydown", handleModalKeydown);
 }
-
 modalBtnYes.addEventListener("click", () => {
   hideModal();
   resetToUploadScreen();
 });
 modalBtnNo.addEventListener("click", hideModal);
 modalOverlay.addEventListener("click", (e) => {
-  if (e.target === modalOverlay) {
-    hideModal();
-  }
+  if (e.target === modalOverlay) hideModal();
 });
 
 // --- Listeners Principais ---
 resetButton.addEventListener("click", initializeCanvas);
-cropButton.addEventListener("click", performWarp);
+cropButton.addEventListener("click", () => {
+  if (loadedPdf && totalPdfPages > 1) {
+    savePageAndReturnToThumbnails();
+  } else {
+    processAndShowFinalResult();
+  }
+});
 rotateButton.addEventListener("click", rotateImage);
 cancelButton.addEventListener("click", showModal);
 startOverButton.addEventListener("click", resetToUploadScreen);
-exportButton.addEventListener("click", handleExport); // NOVO Listener para exportar
-
+exportButton.addEventListener("click", handleExport);
 cancelPdfPreviewButton.addEventListener("click", resetToUploadScreen);
+finishAndDownloadButton.addEventListener("click", buildAndDownloadFinalPdf);
+
 editAnotherPageButton.addEventListener("click", () => {
   resultStep.classList.add("hidden");
   pdfPreviewStep.classList.remove("hidden");

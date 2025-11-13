@@ -130,8 +130,8 @@
               id="crop-button"
               class="action-button bg-green-600 hover:bg-green-700 text-white"
             >
-              <span class="action-icon">✅</span>
-              <span>Finalizar</span>
+              <span class="action-icon">💾</span>
+              <span>Salvar Alterações</span>
             </button>
           </div>
 
@@ -156,12 +156,18 @@
               <!-- Miniaturas de PDF serão injetadas aqui -->
             </div>
           </div>
-          <div class="flex justify-center">
+          <div class="flex justify-center gap-4 pt-4">
             <button
               id="cancel-pdf-preview"
-              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+              class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
             >
-              Cancelar e Voltar
+              Cancelar Tudo
+            </button>
+            <button
+              id="finish-and-download-button"
+              class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors text-base"
+            >
+              Finalizar e Baixar PDF
             </button>
           </div>
         </div>
