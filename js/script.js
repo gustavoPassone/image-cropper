@@ -1,4 +1,5 @@
 // --- Referências do DOM ---
+const mainContainer = document.getElementById("main-container");
 const uploadStep = document.getElementById("upload-step");
 const editStep = document.getElementById("edit-step");
 const resultStep = document.getElementById("result-step");
@@ -36,6 +37,7 @@ const editAnotherPageButton = document.getElementById(
 );
 
 // NOVAS Referências para Opções de Exportação
+const exportOptions = document.getElementById("export-options");
 const exportFilenameInput = document.getElementById("export-filename-input");
 const exportFormatSelect = document.getElementById("export-format-select");
 const exportButton = document.getElementById("export-button");
@@ -308,6 +310,7 @@ function showEditScreen() {
   uploadStep.classList.add("hidden");
   resultStep.classList.add("hidden");
   editStep.classList.remove("hidden");
+  mainContainer.classList.remove("result-active"); // Garante que o layout largo não esteja ativo
   initializeCanvas();
 }
 
@@ -635,13 +638,16 @@ function processAndShowFinalResult() {
     if (originalFileType === "application/pdf") {
       exportFilenameInput.value = `${newFileNameBase}-pagina-${currentEditingPageNum}-corrigido`;
       exportFormatSelect.value = "pdf";
-      resultTitle.textContent = `Resultado Corrigido (Página ${currentEditingPageNum})`;
+      resultTitle.textContent = `Resultado (Página ${currentEditingPageNum})`;
     } else {
       exportFilenameInput.value = `${newFileNameBase}-corrigido`;
       exportFormatSelect.value = "png";
       resultTitle.textContent = `Resultado Corrigido`;
     }
 
+    // MOSTRA OS ELEMENTOS DA TELA DE RESULTADO
+    resultTitle.hidden = false;
+    startOverButton.hidden = false;
     if (loadedPdf && totalPdfPages > 1) {
       editAnotherPageButton.classList.remove("hidden");
     } else {
@@ -649,8 +655,10 @@ function processAndShowFinalResult() {
     }
 
     postProcessingToolbar.classList.remove("hidden");
+    exportOptions.classList.remove("hidden");
     updateActiveFilterButton("none");
 
+    mainContainer.classList.add("result-active"); // Ativa o layout largo
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
@@ -897,13 +905,25 @@ function resetToUploadScreen() {
   }
   currentFilter = "none";
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
+  const resultCtx = resultCanvas.getContext("2d");
+  resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+
+  // ESCONDE TODAS AS ETAPAS E MOSTRA O UPLOAD
   resultStep.classList.add("hidden");
   editStep.classList.add("hidden");
   pdfPreviewStep.classList.add("hidden");
   uploadStep.classList.remove("hidden");
+
+  // ESCONDE TODOS OS CONTROLES DA TELA DE RESULTADO
   postProcessingToolbar.classList.add("hidden");
+  exportOptions.classList.add("hidden");
   sliderContainer.classList.add("hidden");
   finishAndDownloadButton.classList.add("hidden");
+  resultTitle.hidden = true;
+  startOverButton.hidden = true;
+  editAnotherPageButton.classList.add("hidden");
+
+  mainContainer.classList.remove("result-active"); // Desativa o layout largo
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.add("text-green-600");
 }
@@ -952,6 +972,7 @@ cancelPdfPreviewButton.addEventListener("click", resetToUploadScreen);
 finishAndDownloadButton.addEventListener("click", buildAndDownloadFinalPdf);
 
 editAnotherPageButton.addEventListener("click", () => {
+  mainContainer.classList.remove("result-active");
   resultStep.classList.add("hidden");
   pdfPreviewStep.classList.remove("hidden");
 });

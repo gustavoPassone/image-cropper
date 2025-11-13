@@ -56,7 +56,8 @@
     class="bg-gray-100 font-sans flex items-center justify-center min-h-screen p-4"
   >
     <div
-      class="w-full max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden"
+      id="main-container"
+      class="w-full max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-300"
     >
       <!-- Cabeçalho -->
       <header class="bg-blue-600 text-white p-5 text-center">
@@ -172,14 +173,23 @@
           </div>
         </div>
 
-        <!-- ETAPA 3: RESULTADO -->
-        <div id="result-step" class="hidden space-y-4 text-center">
-          <h2 id="result-title" class="text-2xl font-bold text-gray-800 pt-4">
-            Resultado Corrigido
-          </h2>
+        <!-- ETAPA 3: RESULTADO (NOVO LAYOUT) -->
+        <div id="result-step" class="hidden">
+          <!-- Coluna Esquerda: Visualizador da Imagem -->
+          <div id="result-canvas-wrapper">
+            <canvas id="result-canvas"></canvas>
+          </div>
 
-          <!-- CONTROLES ACIMA DA IMAGEM -->
-          <div class="max-w-xl mx-auto space-y-4">
+          <!-- Coluna Direita: Controles -->
+          <div id="result-controls">
+            <h2
+              id="result-title"
+              class="text-2xl font-bold text-gray-800 text-center"
+              hidden
+            >
+              Resultado Corrigido
+            </h2>
+
             <!-- FERRAMENTA DE PÓS-PROCESSAMENTO -->
             <div
               id="post-processing-toolbar"
@@ -205,7 +215,7 @@
                   Girar 90°
                 </button>
               </div>
-              <!-- NOVO SLIDER DE INTENSIDADE -->
+              <!-- SLIDER DE INTENSIDADE -->
               <div
                 id="slider-container"
                 class="hidden mt-4 pt-3 border-t border-gray-200"
@@ -236,7 +246,7 @@
             <!-- OPÇÕES DE EXPORTAÇÃO -->
             <div
               id="export-options"
-              class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4 text-left shadow-sm"
+              class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4 text-left shadow-sm"
             >
               <h3 class="text-lg font-semibold text-gray-800 text-center">
                 Opções de Exportação
@@ -274,27 +284,23 @@
                 Confirmar e Baixar
               </button>
             </div>
-          </div>
 
-          <!-- IMAGEM DE RESULTADO -->
-          <div class="flex justify-center mt-6">
-            <canvas id="result-canvas"></canvas>
-          </div>
-
-          <!-- BOTÕES DE AÇÃO RESTANTES -->
-          <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <button
-              id="edit-another-page-button"
-              class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Editar Outra Página
-            </button>
-            <button
-              id="start-over-button"
-              class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Tentar com Outro Arquivo
-            </button>
+            <!-- BOTÕES DE AÇÃO RESTANTES -->
+            <div class="flex flex-col gap-4 justify-center pt-2">
+              <button
+                id="edit-another-page-button"
+                class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors w-full"
+              >
+                Editar Outra Página
+              </button>
+              <button
+                id="start-over-button"
+                class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors w-full"
+                hidden
+              >
+                Tentar com Outro Arquivo
+              </button>
+            </div>
           </div>
         </div>
       </main>
