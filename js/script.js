@@ -82,6 +82,15 @@ let editedPages = new Map(); // Armazena as páginas editadas (pageNum -> dataUR
 let correctedImageMat = null; // cv.Mat com a imagem original corrigida
 let currentFilter = "none"; // 'none', 'bw', 'contrast', 'sharpen'
 
+// NOVAS: Variáveis para Zoom/Pan na tela de resultado
+const tempCanvasForFilters = document.createElement("canvas"); // Canvas temporário para filtros
+let resultImage = null; // Vai guardar a imagem final como ImageBitmap para performance
+let baseImageWidth, baseImageHeight; // Dimensões da imagem no resultCanvas
+let resultZoom = 1;
+let resultPan = { x: 0, y: 0 };
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+
 // ... Constantes de desenho (POINT_RADIUS, etc.) ...
 const POINT_RADIUS = 25;
 const CLICK_RADIUS = 40;
@@ -92,7 +101,7 @@ const DRAGGING_STROKE_COLOR = "rgba(255, 0, 0, 0.9)";
 
 // Novas constantes para a Lupa
 const LOUPE_SIZE = 150;
-const LOUPE_ZOOM = 5;
+const LOUPE_ZOOM = 10;
 
 // --- 1. Inicialização do OpenCV ---
 
@@ -622,6 +631,49 @@ function findDocumentCorners(imageElement) {
 
 // --- 4. Processamento, Salvamento e Exportação ---
 
+// NOVA: Função para redesenhar o canvas de resultado com zoom e pan
+function drawResultCanvas() {
+  if (!resultImage) return;
+  const ctx = resultCanvas.getContext("2d");
+  // As dimensões do canvas são as da imagem base para manter a resolução total
+  resultCanvas.width = baseImageWidth;
+  resultCanvas.height = baseImageHeight;
+  ctx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+  ctx.save();
+  ctx.translate(resultPan.x, resultPan.y);
+  ctx.scale(resultZoom, resultZoom);
+  ctx.drawImage(resultImage, 0, 0);
+  ctx.restore();
+}
+
+// NOVA: Função auxiliar para atualizar a imagem de resultado a partir de um canvas fonte
+async function updateResultImage(sourceCanvas) {
+  if (resultImage && typeof resultImage.close === "function") {
+    resultImage.close(); // Libera memória do bitmap anterior
+  }
+  try {
+    resultImage = await createImageBitmap(sourceCanvas);
+    baseImageWidth = resultImage.width;
+    baseImageHeight = resultImage.height;
+    drawResultCanvas();
+  } catch (e) {
+    console.error("Erro ao criar ImageBitmap:", e);
+    // Fallback: usar o canvas diretamente se a criação do bitmap falhar
+    baseImageWidth = sourceCanvas.width;
+    baseImageHeight = sourceCanvas.height;
+    resultImage = sourceCanvas; // Não é um bitmap, mas pode funcionar
+    drawResultCanvas();
+  }
+}
+
+// NOVA: Reseta o estado de zoom e pan
+function resetZoomAndPan() {
+  resultZoom = 1;
+  resultPan = { x: 0, y: 0 };
+  isPanning = false;
+  resultCanvas.style.cursor = "grab"; // Cursor padrão para "agarrável"
+}
+
 // Função auxiliar para obter a matriz de transformação e o resultado do warp
 function getWarpedResult() {
   const origW = originalImage.width,
@@ -709,8 +761,12 @@ function processAndShowFinalResult() {
     }
     correctedImageMat = dst.clone(); // Armazena a imagem corrigida
 
-    cv.imshow(resultCanvas, dst);
+    // MODIFICADO: Usa a função de atualização de imagem em vez de cv.imshow direto
+    cv.imshow(resultCanvas, dst); // Ainda desenha uma vez para definir as dimensões
     dst.delete();
+
+    resetZoomAndPan();
+    updateResultImage(resultCanvas); // Cria o bitmap e desenha com o estado de zoom/pan
 
     const newFileNameBase = originalFileName.split(".").slice(0, -1).join(".");
     if (originalFileType === "application/pdf") {
@@ -949,12 +1005,16 @@ function applyPostProcessingEffects() {
       // 'none'
       matToDisplay = correctedImageMat.clone();
     }
-    cv.imshow(resultCanvas, matToDisplay);
+
+    // MODIFICADO: Desenha no canvas temporário e atualiza a imagem de resultado
+    cv.imshow(tempCanvasForFilters, matToDisplay);
+    updateResultImage(tempCanvasForFilters);
   } catch (e) {
     console.error("Error applying filter", e);
     // Fallback para a imagem original corrigida em caso de erro
     if (correctedImageMat && !correctedImageMat.isDeleted()) {
       cv.imshow(resultCanvas, correctedImageMat);
+      updateResultImage(resultCanvas);
     }
   } finally {
     if (matToDisplay && !matToDisplay.isDeleted()) {
@@ -982,6 +1042,14 @@ function resetToUploadScreen() {
     correctedImageMat = null;
   }
   currentFilter = "none";
+
+  // NOVO: reseta estado de zoom e imagem
+  if (resultImage && typeof resultImage.close === "function") {
+    resultImage.close();
+  }
+  resultImage = null;
+  resetZoomAndPan();
+
   editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
   const resultCtx = resultCanvas.getContext("2d");
   resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
@@ -1099,3 +1167,78 @@ window.addEventListener("resize", () => {
     initializeCanvas();
   }
 });
+
+// --- NOVOS LISTENERS PARA ZOOM E PAN NO RESULTADO ---
+
+// Zoom com Scroll
+resultCanvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+
+  const rect = resultCanvas.getBoundingClientRect();
+  // Posição do mouse relativa ao elemento canvas (pode estar escalado pelo CSS)
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // Converte a posição do mouse para as coordenadas internas do canvas (resolução total)
+  const canvasX = (mouseX / rect.width) * resultCanvas.width;
+  const canvasY = (mouseY / rect.height) * resultCanvas.height;
+
+  const zoomFactor = 1.1;
+  const oldZoom = resultZoom;
+
+  // Aumenta ou diminui o zoom
+  if (e.deltaY < 0) {
+    // scroll para cima
+    resultZoom *= zoomFactor;
+  } else {
+    // scroll para baixo
+    resultZoom /= zoomFactor;
+  }
+
+  // Limita o zoom a um intervalo razoável (mínimo de 1x, máximo 10x)
+  resultZoom = Math.max(1, Math.min(resultZoom, 10));
+
+  if (resultZoom <= 1) {
+    resetZoomAndPan();
+  } else {
+    // Calcula o novo pan para que o ponto sob o cursor permaneça no lugar
+    resultPan.x = canvasX - (canvasX - resultPan.x) * (resultZoom / oldZoom);
+    resultPan.y = canvasY - (canvasY - resultPan.y) * (resultZoom / oldZoom);
+  }
+
+  drawResultCanvas();
+});
+
+// Início do Pan (Arrastar)
+resultCanvas.addEventListener("mousedown", (e) => {
+  if (resultZoom <= 1) return;
+  e.preventDefault();
+  isPanning = true;
+  panStart = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    panX: resultPan.x,
+    panY: resultPan.y,
+  };
+  resultCanvas.style.cursor = "grabbing";
+});
+
+// Movimento do Pan
+resultCanvas.addEventListener("mousemove", (e) => {
+  if (!isPanning) return;
+  e.preventDefault();
+  const dx = e.clientX - panStart.clientX;
+  const dy = e.clientY - panStart.clientY;
+  resultPan.x = panStart.panX + dx;
+  resultPan.y = panStart.panY + dy;
+  drawResultCanvas();
+});
+
+// Fim do Pan
+const endPan = (e) => {
+  if (!isPanning) return;
+  isPanning = false;
+  resultCanvas.style.cursor = "grab";
+};
+resultCanvas.addEventListener("mouseup", endPan);
+resultCanvas.addEventListener("mouseleave", endPan);
