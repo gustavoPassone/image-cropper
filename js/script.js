@@ -26,13 +26,13 @@ const cancelButton = document.getElementById("cancel-button");
 // Nova Etapa: PDF Preview
 const pdfPreviewStep = document.getElementById("pdf-preview-step");
 const pdfThumbnailsContainer = document.getElementById("pdf-thumbnails");
+const pdfPreviewTitle = document.getElementById("pdf-preview-title");
 const cancelPdfPreviewButton = document.getElementById("cancel-pdf-preview");
 const finishAndDownloadButton = document.getElementById(
   "finish-and-download-button"
 );
 
 const resultCanvas = document.getElementById("result-canvas");
-const resultTitle = document.getElementById("result-title"); // Título do resultado
 const startOverButton = document.getElementById("start-over-button");
 const editAnotherPageButton = document.getElementById(
   "edit-another-page-button"
@@ -325,7 +325,6 @@ function showEditScreen() {
   uploadStep.classList.add("hidden");
   resultStep.classList.add("hidden");
   editStep.classList.remove("hidden");
-  mainContainer.classList.remove("result-active"); // Garante que o layout largo não esteja ativo
   initializeCanvas();
 }
 
@@ -772,16 +771,13 @@ function processAndShowFinalResult() {
     if (originalFileType === "application/pdf") {
       exportFilenameInput.value = `${newFileNameBase}-pagina-${currentEditingPageNum}-corrigido`;
       exportFormatSelect.value = "pdf";
-      resultTitle.textContent = `Resultado (Página ${currentEditingPageNum})`;
     } else {
       exportFilenameInput.value = `${newFileNameBase}-corrigido`;
       exportFormatSelect.value = "png";
-      resultTitle.textContent = `Resultado Corrigido`;
     }
 
     // MOSTRA OS ELEMENTOS DA TELA DE RESULTADO
-    resultTitle.hidden = false;
-    startOverButton.hidden = false;
+    startOverButton.classList.remove("hidden");
     if (loadedPdf && totalPdfPages > 1) {
       editAnotherPageButton.classList.remove("hidden");
     } else {
@@ -792,7 +788,6 @@ function processAndShowFinalResult() {
     exportOptions.classList.remove("hidden");
     updateActiveFilterButton("none");
 
-    mainContainer.classList.add("result-active"); // Ativa o layout largo
     editStep.classList.add("hidden");
     resultStep.classList.remove("hidden");
   } catch (error) {
@@ -908,10 +903,13 @@ function handleExport() {
 // --- 5. Lógica de Pós-Processamento (Filtros) ---
 function updateActiveFilterButton(activeFilter) {
   currentFilter = activeFilter;
-  document
-    .querySelectorAll(".filter-button")
-    .forEach((btn) => btn.classList.remove("active"));
 
+  const filterButtons = [
+    filterNoneButton,
+    filterBwButton,
+    filterContrastButton,
+    filterSharpenButton,
+  ];
   const buttonMap = {
     none: filterNoneButton,
     bw: filterBwButton,
@@ -919,21 +917,32 @@ function updateActiveFilterButton(activeFilter) {
     sharpen: filterSharpenButton,
   };
 
+  // Reset all buttons to inactive state
+  filterButtons.forEach((btn) => {
+    btn.classList.remove("bg-[#2F81F7]", "text-white");
+    btn.classList.add("bg-[#30363D]", "text-[#C9D1D9]", "hover:bg-[#3d444c]");
+  });
+
+  // Set the selected button to active state
   if (buttonMap[activeFilter]) {
-    buttonMap[activeFilter].classList.add("active");
+    const activeBtn = buttonMap[activeFilter];
+    activeBtn.classList.remove(
+      "bg-[#30363D]",
+      "text-[#C9D1D9]",
+      "hover:bg-[#3d444c]"
+    );
+    activeBtn.classList.add("bg-[#2F81F7]", "text-white");
   }
 
-  if (
-    activeFilter === "bw" ||
-    activeFilter === "contrast" ||
-    activeFilter === "sharpen"
-  ) {
+  // Show/hide slider
+  if (["bw", "contrast", "sharpen"].includes(activeFilter)) {
     intensitySlider.value = 50;
     sliderValue.textContent = "50%";
     sliderContainer.classList.remove("hidden");
   } else {
     sliderContainer.classList.add("hidden");
   }
+
   applyPostProcessingEffects();
 }
 
@@ -946,9 +955,6 @@ function applyPostProcessingEffects() {
       matToDisplay = new cv.Mat();
       let gray = new cv.Mat();
       cv.cvtColor(correctedImageMat, gray, cv.COLOR_RGBA2GRAY);
-      // Mapeia o slider (0-100) para o parâmetro C (15 a -5)
-      // Intensidade maior (100) => C=-5 (mais detalhes, mais "preto")
-      // Intensidade menor (0) => C=15 (menos detalhes, mais "branco")
       const C = 15 - (parseInt(intensitySlider.value, 10) / 100) * 20;
       cv.adaptiveThreshold(
         gray,
@@ -961,13 +967,11 @@ function applyPostProcessingEffects() {
       );
       gray.delete();
     } else if (currentFilter === "contrast") {
-      // Mapeia o slider (0-100) para o alpha (contraste) (1.0 a 3.0)
       const alpha = 1.0 + (parseInt(intensitySlider.value, 10) / 100) * 2.0;
       matToDisplay = new cv.Mat();
-      correctedImageMat.convertTo(matToDisplay, -1, alpha, 0); // beta=0
+      correctedImageMat.convertTo(matToDisplay, -1, alpha, 0);
     } else if (currentFilter === "sharpen") {
       let sharpened = new cv.Mat();
-      // Basic sharpen kernel
       let kernel = cv.matFromArray(
         3,
         3,
@@ -984,9 +988,8 @@ function applyPostProcessingEffects() {
         cv.BORDER_DEFAULT
       );
 
-      // Blend the sharpened image with the original based on the slider
-      const alpha = parseInt(intensitySlider.value, 10) / 100; // Sharpened image weight
-      const beta = 1.0 - alpha; // Original image weight
+      const alpha = parseInt(intensitySlider.value, 10) / 100;
+      const beta = 1.0 - alpha;
 
       matToDisplay = new cv.Mat();
       cv.addWeighted(
@@ -1006,12 +1009,10 @@ function applyPostProcessingEffects() {
       matToDisplay = correctedImageMat.clone();
     }
 
-    // MODIFICADO: Desenha no canvas temporário e atualiza a imagem de resultado
     cv.imshow(tempCanvasForFilters, matToDisplay);
     updateResultImage(tempCanvasForFilters);
   } catch (e) {
     console.error("Error applying filter", e);
-    // Fallback para a imagem original corrigida em caso de erro
     if (correctedImageMat && !correctedImageMat.isDeleted()) {
       cv.imshow(resultCanvas, correctedImageMat);
       updateResultImage(resultCanvas);
@@ -1065,11 +1066,9 @@ function resetToUploadScreen() {
   exportOptions.classList.add("hidden");
   sliderContainer.classList.add("hidden");
   finishAndDownloadButton.classList.add("hidden");
-  resultTitle.hidden = true;
-  startOverButton.hidden = true;
+  startOverButton.classList.add("hidden");
   editAnotherPageButton.classList.add("hidden");
 
-  mainContainer.classList.remove("result-active"); // Desativa o layout largo
   opencvStatus.textContent = "Bibliotecas carregadas!";
   opencvStatus.classList.add("text-green-600");
 }
@@ -1118,7 +1117,6 @@ cancelPdfPreviewButton.addEventListener("click", resetToUploadScreen);
 finishAndDownloadButton.addEventListener("click", buildAndDownloadFinalPdf);
 
 editAnotherPageButton.addEventListener("click", () => {
-  mainContainer.classList.remove("result-active");
   resultStep.classList.add("hidden");
   pdfPreviewStep.classList.remove("hidden");
 });

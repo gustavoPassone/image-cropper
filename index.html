@@ -3,26 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Corretor de Perspectiva - Imagem e PDF</title>
+    <title>VoxScan - Corrija a Perspectiva do seu Documento</title>
+    <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
 
-    <!-- 1. Carrega o Tailwind CSS -->
+    <!-- 1. Carrega o Tailwind CSS (configuração movida para o CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Inter", "sans-serif"],
-            },
-          },
-        },
-      };
-    </script>
 
     <!-- 2. Carrega a biblioteca OpenCV.js -->
     <script>
-      // O objeto Module precisa ser definido ANTES do script do opencv.js ser carregado.
-      // Ele irá chamar a função global `onOpenCvReady` quando o OpenCV estiver totalmente inicializado.
       var Module = {
         onRuntimeInitialized: function () {
           if (window.onOpenCvReady) {
@@ -37,13 +25,11 @@
       id="opencv-script"
     ></script>
 
-    <!-- 3. NOVAS BIBLIOTECAS: pdf.js (para ler PDFs) e jsPDF (para criar PDFs) -->
+    <!-- 3. Bibliotecas PDF.js e jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
     <script>
-      // Configura o worker para o pdf.js
       if (typeof pdfjsLib !== "undefined") {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -53,288 +39,456 @@
     <link rel="stylesheet" href="style/style.css" />
   </head>
   <body
-    class="bg-gray-100 font-sans flex items-center justify-center min-h-screen p-4"
+    class="bg-[#0D1117] text-[#C9D1D9] font-sans flex flex-col items-center min-h-screen"
   >
+    <!-- Cabeçalho Principal (INTOCADO CONFORME SOLICITADO) -->
+    <header
+      id="main-header"
+      class="w-full flex items-center justify-between p-4 px-8 border-b border-[#30363D]"
+    >
+      <div class="flex items-center gap-3">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M4 4H12V12H4V4Z" fill="#2F81F7" />
+          <path d="M4 14H12V22H4V14Z" fill="#2F81F7" fill-opacity="0.6" />
+          <path d="M14 4H22V12H14V4Z" fill="#2F81F7" fill-opacity="0.6" />
+          <path d="M14 14H22V22H14V14Z" fill="#2F81F7" />
+        </svg>
+        <h1 class="text-lg font-semibold text-white">VoxScan</h1>
+      </div>
+    </header>
+
     <div
       id="main-container"
-      class="w-full max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-300"
+      class="w-full h-full flex-grow flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8"
     >
-      <!-- Cabeçalho -->
-      <header class="bg-blue-600 text-white p-5 text-center">
-        <h1 class="text-2xl font-bold">
-          Ferramenta de Correção de Perspectiva
-        </h1>
-        <p class="text-sm text-blue-100">
-          Arraste os 4 cantos para corrigir a imagem ou PDF
-        </p>
-      </header>
-
-      <main class="p-6 md:p-8 space-y-6">
+      <main
+        class="w-full h-full flex-grow flex flex-col items-center justify-center"
+      >
         <!-- ETAPA 1: UPLOAD -->
-        <div id="upload-step" class="space-y-4">
-          <div
-            id="drop-zone"
-            class="border-4 border-dashed border-gray-300 rounded-lg p-10 text-center transition-all duration-300"
-          >
-            <p id="opencv-status" class="text-lg font-semibold text-gray-700">
+        <div
+          id="upload-step"
+          class="w-full max-w-2xl text-center flex flex-col items-center justify-center h-full"
+        >
+          <div class="space-y-2 mb-8">
+            <h2 class="text-4xl font-bold text-white tracking-tight">
+              Corrija a Perspectiva do seu Documento
+            </h2>
+            <p id="opencv-status" class="text-[#8B949E]">
               Carregando bibliotecas...
             </p>
-            <p id="upload-instructions" class="text-gray-500 mt-2 hidden">
-              Arraste e solte uma Imagem ou PDF aqui
+          </div>
+          <div
+            id="drop-zone"
+            class="w-full bg-[#161B22] border-2 border-dashed border-[#30363D] rounded-xl p-16 cursor-pointer transition-all duration-300 hover:border-[#2F81F7] hover:bg-[#1C2128]"
+          >
+            <div class="flex flex-col items-center justify-center gap-4">
+              <div
+                class="bg-[#21262D] p-3 rounded-full border border-[#30363D]"
+              >
+                <svg
+                  class="w-8 h-8 text-[#8B949E]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                  />
+                </svg>
+              </div>
+              <p id="upload-instructions" class="text-white hidden">
+                Arraste e solte seu arquivo aqui
+              </p>
+              <div
+                id="upload-buttons"
+                class="hidden flex flex-col items-center"
+              >
+                <p class="text-[#8B949E] text-sm my-2">ou</p>
+                <button
+                  id="select-button"
+                  class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD] hover:shadow-lg hover:shadow-[#2F81F7]/30"
+                >
+                  Selecionar do Computador
+                </button>
+              </div>
+            </div>
+          </div>
+          <input
+            type="file"
+            id="file-input"
+            class="hidden"
+            accept="image/png, image/jpeg, application/pdf"
+          />
+          <p class="text-xs text-[#8B949E] mt-6">
+            Suporta: JPG, PNG, PDF. Tamanho máximo: 25MB.
+          </p>
+        </div>
+
+        <!-- ETAPA 2: EDIÇÃO (REDESENHADA) -->
+        <div
+          id="edit-step"
+          class="hidden w-full h-full flex flex-col bg-[#0D1117]"
+        >
+          <!-- BARRA DE AÇÕES SUPERIOR -->
+          <div
+            id="edit-actions-bar"
+            class="flex-shrink-0 w-full flex justify-between items-center px-6 py-3 border-b border-[#30363D]"
+          >
+            <div class="flex items-center gap-1 sm:gap-2">
+              <button
+                id="cancel-button"
+                class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
+              >
+                <svg
+                  class="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                  />
+                </svg>
+                <span>Cancelar</span>
+              </button>
+              <button
+                id="reset-button"
+                class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
+              >
+                <svg
+                  class="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2.5"
+                  stroke="#b3b3b3"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.642v-4.992m0 0h4.992m-4.993 0l3.181 3.181A1.5 1.5 0 005.412 17.06m0 0a8.257 8.257 0 0013.882 2.115 1.5 1.5 0 00-.777-1.325.2.2 0 00-.233-.048c.15-.084.298-.172.446-.266.38-.238.749-.508 1.096-.816a8.257 8.257 0 00-13.882-2.115 1.5 1.5 0 00.777 1.325c.189.112.38.218.574.316.38.204.767.391 1.16.562 3.098 1.385 6.78 1.385 9.878 0 1.5-.668 2.8-1.554 3.795-2.585M12 21V3"
+                  />
+                </svg>
+
+                <span>Reiniciar</span>
+              </button>
+              <button
+                id="rotate-button"
+                class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
+              >
+                <svg
+                  class="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
+                  />
+                </svg>
+                <span>Girar 90°</span>
+              </button>
+            </div>
+            <div>
+              <button
+                id="crop-button"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-semibold border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD]"
+              >
+                <svg
+                  class="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                <span>Finalizar</span>
+              </button>
+            </div>
+          </div>
+          <!-- TEXTO DE INSTRUÇÃO -->
+          <div class="flex-shrink-0 w-full text-center py-4">
+            <p class="text-sm text-[#8B949E]">
+              Arraste os 4 cantos para ajustar a perspectiva
             </p>
           </div>
-
-          <div id="upload-buttons" class="text-center hidden">
-            <p class="text-gray-600 my-2">ou</p>
-            <button
-              id="select-button"
-              class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Selecionar Arquivo
-            </button>
-            <input
-              type="file"
-              id="file-input"
-              class="hidden"
-              accept="image/png, image/jpeg, image/jpg, application/pdf"
-            />
-          </div>
-        </div>
-
-        <!-- ETAPA 2: EDIÇÃO -->
-        <div id="edit-step" class="hidden space-y-4">
+          <!-- ÁREA DE PREVIEW DO CANVAS -->
           <div
-            class="flex gap-2 sm:gap-4 justify-center items-stretch mb-4 flex-wrap"
+            id="edit-preview-area"
+            class="flex-grow w-full flex items-center justify-center p-8 pt-0"
           >
-            <button
-              id="cancel-button"
-              class="action-button bg-red-600 hover:bg-red-700 text-white"
+            <div
+              id="canvas-wrapper"
+              class="relative w-full h-full flex items-center justify-center bg-[#1c2b3a] rounded-lg shadow-inner"
             >
-              <span class="action-icon">❌</span>
-              <span>Cancelar</span>
-            </button>
-            <button
-              id="reset-button"
-              class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
-            >
-              <span class="action-icon">🔄</span>
-              <span>Reiniciar</span>
-            </button>
-            <button
-              id="rotate-button"
-              class="action-button bg-gray-200 hover:bg-gray-300 text-gray-700"
-            >
-              <span class="action-icon">↪️</span>
-              <span>Girar</span>
-            </button>
-            <button
-              id="crop-button"
-              class="action-button bg-green-600 hover:bg-green-700 text-white"
-            >
-              <span class="action-icon">💾</span>
-              <span>Salvar Alterações</span>
-            </button>
-          </div>
-
-          <p class="text-center text-gray-600">
-            Arraste os 4 pontos para os cantos do objeto.
-          </p>
-          <div id="canvas-wrapper">
-            <canvas id="edit-canvas"></canvas>
-            <canvas id="loupe-canvas"></canvas>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <p class="text-[#4b5e71] font-medium">Image preview</p>
+              </div>
+              <canvas id="edit-canvas" class="relative z-10"></canvas>
+              <canvas
+                id="loupe-canvas"
+                class="rounded-full border-4 border-white shadow-2xl z-20"
+              ></canvas>
+            </div>
           </div>
         </div>
 
-        <!-- NOVA ETAPA 2.5: PRÉ-VISUALIZAÇÃO DE PDF -->
-        <div id="pdf-preview-step" class="hidden space-y-4">
-          <h2 class="text-2xl font-bold text-gray-800 text-center">
+        <!-- ETAPA 2.5: PRÉ-VISUALIZAÇÃO DE PDF -->
+        <div
+          id="pdf-preview-step"
+          class="hidden w-full max-w-6xl h-full flex flex-col gap-6"
+        >
+          <h2
+            id="pdf-preview-title"
+            class="text-3xl font-bold text-white text-center"
+          >
             Selecione uma Página para Editar
           </h2>
           <div
             id="pdf-thumbnails-container"
-            class="border-2 border-gray-200 rounded-lg p-4"
+            class="flex-grow bg-[#161B22] border border-[#30363D] rounded-xl p-6 overflow-y-auto"
           >
-            <div id="pdf-thumbnails">
-              <!-- Miniaturas de PDF serão injetadas aqui -->
-            </div>
+            <div
+              id="pdf-thumbnails"
+              class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"
+            ></div>
           </div>
-          <div class="flex justify-center gap-4 pt-4">
+          <div
+            class="flex-shrink-0 flex justify-center items-center gap-4 pt-4"
+          >
             <button
               id="cancel-pdf-preview"
-              class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#21262D] text-[#C9D1D9] border-[#30363D] hover:bg-[#30363D] hover:border-[#8B949E] focus:ring-[#8B949E] active:bg-[#39414c]"
             >
               Cancelar Tudo
             </button>
             <button
               id="finish-and-download-button"
-              class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors text-base"
+              class="hidden inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD] hover:shadow-lg hover:shadow-[#2F81F7]/30"
             >
               Finalizar e Baixar PDF
             </button>
           </div>
         </div>
 
-        <!-- ETAPA 3: RESULTADO (NOVO LAYOUT) -->
-        <div id="result-step" class="hidden">
-          <!-- Coluna Esquerda: Visualizador da Imagem -->
-          <div id="result-canvas-wrapper">
-            <canvas id="result-canvas"></canvas>
-          </div>
-
-          <!-- Coluna Direita: Controles -->
-          <div id="result-controls">
-            <h2
-              id="result-title"
-              class="text-2xl font-bold text-gray-800 text-center"
-              hidden
-            >
-              Resultado Corrigido
-            </h2>
-
-            <!-- FERRAMENTA DE PÓS-PROCESSAMENTO -->
+        <!-- ETAPA 3: RESULTADO (REDESENHADA) -->
+        <div id="result-step" class="hidden w-full h-full flex flex-col">
+          <div class="result-grid flex-grow w-full max-w-7xl mx-auto">
+            <!-- COLUNA DA IMAGEM -->
             <div
-              id="post-processing-toolbar"
-              class="hidden p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
+              id="result-canvas-wrapper"
+              class="bg-[#010409] rounded-xl flex items-center justify-center overflow-hidden border border-[#30363D]"
             >
-              <h4 class="text-md font-semibold text-gray-700 text-center">
-                Filtros e Ajustes Finais
-              </h4>
-              <div class="flex justify-center gap-2 flex-wrap mt-3">
-                <button id="filter-none-button" class="filter-button">
-                  Sem Filtro
-                </button>
-                <button id="filter-bw-button" class="filter-button">
-                  Preto e Branco
-                </button>
-                <button id="filter-contrast-button" class="filter-button">
-                  Ajustar Contraste
-                </button>
-                <button id="filter-sharpen-button" class="filter-button">
-                  Nitidez
-                </button>
-                <button id="filter-rotate-button" class="filter-button">
-                  Girar 90°
-                </button>
-              </div>
-              <!-- SLIDER DE INTENSIDADE -->
+              <canvas id="result-canvas" class="max-w-full max-h-full"></canvas>
+            </div>
+            <!-- COLUNA DOS CONTROLES -->
+            <div id="result-controls" class="flex flex-col gap-6 py-4">
+              <h2 class="text-2xl font-bold text-white">Salvar e Exportar</h2>
+              <!-- CARD DE FILTROS -->
               <div
-                id="slider-container"
-                class="hidden mt-4 pt-3 border-t border-gray-200"
+                id="post-processing-toolbar"
+                class="hidden bg-[#161B22] border border-[#30363D] rounded-xl p-5 w-full"
               >
-                <label
-                  for="intensity-slider"
-                  class="block text-sm font-medium text-gray-700 mb-2"
-                  >Intensidade do Efeito</label
-                >
-                <div class="flex items-center gap-4">
-                  <input
-                    type="range"
-                    id="intensity-slider"
-                    min="0"
-                    max="100"
-                    value="50"
-                    class="w-full"
-                  />
-                  <span
-                    id="slider-value"
-                    class="text-sm font-semibold text-gray-600 w-12 text-right"
-                    >50%</span
+                <h4 class="font-semibold text-white">
+                  Filtros e Ajustes Finais
+                </h4>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                  <button
+                    id="filter-none-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2"
                   >
+                    Sem Filtro
+                  </button>
+                  <button
+                    id="filter-bw-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    Preto e Branco
+                  </button>
+                  <button
+                    id="filter-contrast-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    Ajustar Contraste
+                  </button>
+                  <button
+                    id="filter-sharpen-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    Nitidez
+                  </button>
+                  <button
+                    id="filter-rotate-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2 col-span-2 bg-[#30363D] text-[#C9D1D9] hover:bg-[#3d444c]"
+                  >
+                    <svg
+                      class="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
+                      />
+                    </svg>
+                    <span>Girar 90°</span>
+                  </button>
+                </div>
+                <div
+                  id="slider-container"
+                  class="hidden mt-4 pt-4 border-t border-[#30363D]"
+                >
+                  <label
+                    for="intensity-slider"
+                    class="block text-sm font-medium text-[#C9D1D9] mb-2"
+                    >Intensidade do Efeito</label
+                  >
+                  <div class="flex items-center gap-4">
+                    <input
+                      type="range"
+                      id="intensity-slider"
+                      min="0"
+                      max="100"
+                      value="50"
+                      class="w-full"
+                    />
+                    <span
+                      id="slider-value"
+                      class="text-sm font-semibold text-[#8B949E] w-12 text-center"
+                      >50%</span
+                    >
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <!-- OPÇÕES DE EXPORTAÇÃO -->
-            <div
-              id="export-options"
-              class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4 text-left shadow-sm"
-            >
-              <h3 class="text-lg font-semibold text-gray-800 text-center">
-                Opções de Exportação
-              </h3>
-              <div>
-                <label
-                  for="export-filename-input"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Nome do Arquivo (sem extensão)</label
-                >
-                <input
-                  type="text"
-                  id="export-filename-input"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
+              <!-- CARD DE EXPORTAÇÃO -->
+              <div
+                id="export-options"
+                class="hidden bg-[#161B22] border border-[#30363D] rounded-xl p-5 w-full"
+              >
+                <h3 class="font-semibold text-white">Opções de Exportação</h3>
+                <div class="space-y-4 mt-4">
+                  <div>
+                    <label
+                      for="export-filename-input"
+                      class="block text-sm font-medium text-[#C9D1D9] mb-2"
+                      >Nome do Arquivo (sem extensão)</label
+                    >
+                    <input
+                      type="text"
+                      id="export-filename-input"
+                      class="w-full bg-[#0D1117] border border-[#30363D] rounded-lg px-3 py-2 text-sm text-[#C9D1D9] placeholder-[#8B949E] focus:outline-none focus:ring-2 focus:ring-[#2F81F7] focus:border-[#2F81F7] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="export-format-select"
+                      class="block text-sm font-medium text-[#C9D1D9] mb-2"
+                      >Formato de Saída</label
+                    >
+                    <select
+                      id="export-format-select"
+                      class="w-full bg-[#0D1117] border border-[#2F81F7] rounded-lg px-3 py-2 text-sm text-[#C9D1D9] placeholder-[#8B949E] focus:outline-none focus:ring-2 focus:ring-[#2F81F7] transition-colors pr-8 appearance-none"
+                      style="
+                        background-image: url('data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%238B949E\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e');
+                        background-position: right 0.5rem center;
+                        background-repeat: no-repeat;
+                        background-size: 1.5em 1.5em;
+                      "
+                    >
+                      <option value="png">Imagem PNG</option>
+                      <option value="pdf">Documento PDF</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label
-                  for="export-format-select"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Formato de Saída</label
+              <!-- AÇÕES FINAIS -->
+              <div class="flex flex-col items-center gap-4 mt-auto">
+                <button
+                  id="export-button"
+                  class="inline-flex items-center justify-center gap-2.5 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD] w-full"
                 >
-                <select
-                  id="export-format-select"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  <svg
+                    class="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"
+                    />
+                    <path
+                      d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"
+                    />
+                  </svg>
+                  <span>Confirmar e Baixar</span>
+                </button>
+                <button
+                  id="edit-another-page-button"
+                  class="hidden text-sm text-[#8B949E] hover:text-white transition-colors w-full py-2"
                 >
-                  <option value="png">Imagem PNG</option>
-                  <option value="pdf">Documento PDF</option>
-                </select>
+                  Editar Outra Página
+                </button>
+                <button
+                  id="start-over-button"
+                  class="hidden text-sm text-[#8B949E] hover:text-white transition-colors w-full py-2"
+                >
+                  Tentar com Outro Arquivo
+                </button>
               </div>
-              <button
-                id="export-button"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition-colors text-base"
-              >
-                Confirmar e Baixar
-              </button>
-            </div>
-
-            <!-- BOTÕES DE AÇÃO RESTANTES -->
-            <div class="flex flex-col gap-4 justify-center pt-2">
-              <button
-                id="edit-another-page-button"
-                class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg transition-colors w-full"
-              >
-                Editar Outra Página
-              </button>
-              <button
-                id="start-over-button"
-                class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-5 rounded-lg transition-colors w-full"
-                hidden
-              >
-                Tentar com Outro Arquivo
-              </button>
             </div>
           </div>
         </div>
       </main>
+    </div>
 
-      <!-- MODAL DE CONFIRMAÇÃO -->
+    <!-- MODAL DE CONFIRMAÇÃO -->
+    <div
+      id="modal-overlay"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 hidden"
+    >
       <div
-        id="modal-overlay"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden"
+        id="modal-box"
+        class="bg-[#161B22] rounded-xl shadow-2xl p-6 w-full max-w-sm border border-[#30363D]"
       >
-        <div
-          id="modal-box"
-          class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm"
-        >
-          <h3 class="text-xl font-bold text-gray-800">
-            Deseja mesmo cancelar?
-          </h3>
-          <p class="text-gray-600 my-2">
-            Qualquer alteração não salva será perdida.
-          </p>
-          <div class="flex gap-4 justify-end mt-6">
-            <button
-              id="modal-btn-no"
-              class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Não
-            </button>
-            <button
-              id="modal-btn-yes"
-              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg transition-colors"
-            >
-              Sim
-            </button>
-          </div>
+        <h3 class="text-lg font-bold text-white">Deseja mesmo cancelar?</h3>
+        <p class="text-[#8B949E] my-2 text-sm">
+          Qualquer alteração não salva será perdida.
+        </p>
+        <div class="flex gap-4 justify-end mt-6">
+          <button
+            id="modal-btn-no"
+            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#21262D] text-[#C9D1D9] border-[#30363D] hover:bg-[#30363D] hover:border-[#8B949E] focus:ring-[#8B949E] active:bg-[#39414c]"
+          >
+            Não
+          </button>
+          <button
+            id="modal-btn-yes"
+            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#DA3633] text-white border-transparent hover:bg-[#F85149] focus:ring-[#F85149] hover:shadow-lg hover:shadow-[#DA3633]/30"
+          >
+            Sim, Cancelar
+          </button>
         </div>
       </div>
     </div>
