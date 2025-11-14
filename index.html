@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VoxScan - Corrija a Perspectiva do seu Documento</title>
-    <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
+    <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
 
     <!-- 1. Carrega o Tailwind CSS (configuração movida para o CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -36,12 +36,15 @@
       }
     </script>
 
+    <!-- 4. Biblioteca de Ícones: Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <link rel="stylesheet" href="style/style.css" />
   </head>
   <body
     class="bg-[#0D1117] text-[#C9D1D9] font-sans flex flex-col items-center min-h-screen"
   >
-    <!-- Cabeçalho Principal (INTOCADO CONFORME SOLICITADO) -->
+    <!-- Cabeçalho Principal -->
     <header
       id="main-header"
       class="w-full flex items-center justify-between p-4 px-8 border-b border-[#30363D]"
@@ -91,20 +94,10 @@
               <div
                 class="bg-[#21262D] p-3 rounded-full border border-[#30363D]"
               >
-                <svg
-                  class="w-8 h-8 text-[#8B949E]"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                  />
-                </svg>
+                <i
+                  data-lucide="upload-cloud"
+                  class="w-10 h-10 text-[#8B949E]"
+                ></i>
               </div>
               <p id="upload-instructions" class="text-white hidden">
                 Arraste e solte seu arquivo aqui
@@ -149,57 +142,21 @@
                 id="cancel-button"
                 class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
               >
-                <svg
-                  class="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-                  />
-                </svg>
+                <i data-lucide="x" class="w-5 h-5"></i>
                 <span>Cancelar</span>
               </button>
               <button
                 id="reset-button"
                 class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
               >
-                <svg
-                  class="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="2.5"
-                  stroke="#b3b3b3"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.642v-4.992m0 0h4.992m-4.993 0l3.181 3.181A1.5 1.5 0 005.412 17.06m0 0a8.257 8.257 0 0013.882 2.115 1.5 1.5 0 00-.777-1.325.2.2 0 00-.233-.048c.15-.084.298-.172.446-.266.38-.238.749-.508 1.096-.816a8.257 8.257 0 00-13.882-2.115 1.5 1.5 0 00.777 1.325c.189.112.38.218.574.316.38.204.767.391 1.16.562 3.098 1.385 6.78 1.385 9.878 0 1.5-.668 2.8-1.554 3.795-2.585M12 21V3"
-                  />
-                </svg>
-
+                <i data-lucide="rotate-cw" class="w-5 h-5"></i>
                 <span>Reiniciar</span>
               </button>
               <button
                 id="rotate-button"
                 class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] text-[#C9D1D9] hover:bg-[#21262D] focus:ring-[#8B949E]"
               >
-                <svg
-                  class="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
-                  />
-                </svg>
+                <i data-lucide="redo-2" class="w-5 h-5"></i>
                 <span>Girar 90°</span>
               </button>
             </div>
@@ -208,18 +165,7 @@
                 id="crop-button"
                 class="inline-flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-semibold border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD]"
               >
-                <svg
-                  class="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
+                <i data-lucide="check" class="w-5 h-5"></i>
                 <span>Finalizar</span>
               </button>
             </div>
@@ -339,20 +285,7 @@
                     id="filter-rotate-button"
                     class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2 col-span-2 bg-[#30363D] text-[#C9D1D9] hover:bg-[#3d444c]"
                   >
-                    <svg
-                      class="w-5 h-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
-                      />
-                    </svg>
+                    <i data-lucide="redo-2" class="w-5 h-5"></i>
                     <span>Girar 90°</span>
                   </button>
                 </div>
@@ -429,19 +362,7 @@
                   id="export-button"
                   class="inline-flex items-center justify-center gap-2.5 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD] w-full"
                 >
-                  <svg
-                    class="w-5 h-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"
-                    />
-                    <path
-                      d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"
-                    />
-                  </svg>
+                  <i data-lucide="download" class="w-5 h-5"></i>
                   <span>Confirmar e Baixar</span>
                 </button>
                 <button
@@ -494,5 +415,8 @@
     </div>
 
     <script src="js/script.js"></script>
+    <script>
+      lucide.createIcons();
+    </script>
   </body>
 </html>
