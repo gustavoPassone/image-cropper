@@ -6,6 +6,7 @@
     <title>VoxScan - Corrija a Perspectiva do seu Documento</title>
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0D1117" />
+    <link rel="shortcut icon" href="assets/favicon.png" type="image/x-icon">
 
     <!-- 1. Carrega o Tailwind CSS (configuração movida para o CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,10 +27,11 @@
       id="opencv-script"
     ></script>
 
-    <!-- 3. Bibliotecas PDF.js e jsPDF -->
+    <!-- 3. Bibliotecas PDF.js, jsPDF e JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
       if (typeof pdfjsLib !== "undefined") {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -51,18 +53,11 @@
       class="w-full flex items-center justify-between p-4 px-8 border-b border-[#30363D]"
     >
       <div class="flex items-center gap-3">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M4 4H12V12H4V4Z" fill="#2F81F7" />
-          <path d="M4 14H12V22H4V14Z" fill="#2F81F7" fill-opacity="0.6" />
-          <path d="M14 4H22V12H14V4Z" fill="#2F81F7" fill-opacity="0.6" />
-          <path d="M14 14H22V22H14V14Z" fill="#2F81F7" />
-        </svg>
+        <img
+          src="assets/favicon.png"
+          alt="VoxScan Logo"
+          class="w-6 h-6"
+        />
         <h1 class="text-lg font-semibold text-white">VoxScan</h1>
       </div>
     </header>
@@ -101,7 +96,7 @@
                 ></i>
               </div>
               <p id="upload-instructions" class="text-white hidden">
-                Arraste e solte seu arquivo aqui
+                Arraste e solte seus arquivos aqui
               </p>
               <div
                 id="upload-buttons"
@@ -122,6 +117,7 @@
             id="file-input"
             class="hidden"
             accept="image/png, image/jpeg, application/pdf"
+            multiple
           />
           <p class="text-xs text-[#8B949E] mt-6">
             Suporta: JPG, PNG, PDF. Tamanho máximo: 50MB.
@@ -198,23 +194,23 @@
           </div>
         </div>
 
-        <!-- ETAPA 2.5: PRÉ-VISUALIZAÇÃO DE PDF -->
+        <!-- ETAPA 2.5: PRÉ-VISUALIZAÇÃO (PDF ou Imagens em Lote) -->
         <div
-          id="pdf-preview-step"
+          id="preview-step"
           class="hidden w-full max-w-6xl h-full flex flex-col gap-6"
         >
           <h2
-            id="pdf-preview-title"
+            id="preview-title"
             class="text-3xl font-bold text-white text-center"
           >
-            Selecione uma Página para Editar
+            Selecione um item para Editar
           </h2>
           <div
-            id="pdf-thumbnails-container"
+            id="thumbnails-container"
             class="flex-grow bg-[#161B22] border border-[#30363D] rounded-xl p-6 overflow-y-auto"
           >
             <div
-              id="pdf-thumbnails"
+              id="thumbnails"
               class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"
             ></div>
           </div>
@@ -222,13 +218,19 @@
             class="flex-shrink-0 flex justify-center items-center gap-4 pt-4"
           >
             <button
-              id="cancel-pdf-preview"
+              id="cancel-preview-button"
               class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#21262D] text-[#C9D1D9] border-[#30363D] hover:bg-[#30363D] hover:border-[#8B949E] focus:ring-[#8B949E] active:bg-[#39414c]"
             >
               Cancelar Tudo
             </button>
             <button
-              id="finish-and-download-button"
+              id="download-zip-button"
+              class="hidden inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#238636] text-white border-transparent hover:bg-[#2EA043] focus:ring-[#2EA043] hover:shadow-lg hover:shadow-[#238636]/30"
+            >
+              Baixar como ZIP
+            </button>
+            <button
+              id="download-pdf-button"
               class="hidden inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1117] transform hover:-translate-y-0.5 active:translate-y-0 bg-[#2F81F7] text-white border-transparent hover:bg-[#388BFD] focus:ring-[#388BFD] hover:shadow-lg hover:shadow-[#2F81F7]/30"
             >
               Finalizar e Baixar PDF

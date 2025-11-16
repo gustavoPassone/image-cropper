@@ -16,7 +16,7 @@
 #main-container,
 #upload-step,
 #edit-step,
-#pdf-preview-step,
+#preview-step,
 #result-step {
   height: 100%;
   width: 100%;
@@ -49,7 +49,7 @@
 }
 
 /* --- ETAPA 2.5: PDF PREVIEW --- */
-#pdf-thumbnails-container {
+#thumbnails-container {
   scrollbar-width: thin;
   scrollbar-color: #30363d #161b22;
 }
