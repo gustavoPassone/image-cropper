@@ -103,6 +103,10 @@ const DRAGGING_STROKE_COLOR = "rgba(255, 0, 0, 0.9)";
 const LOUPE_SIZE = 150;
 const LOUPE_ZOOM = 10;
 
+// Constante para limite de arquivo
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 // --- 1. Inicialização do OpenCV ---
 
 // Flag para evitar que a função seja chamada múltiplas vezes
@@ -165,6 +169,15 @@ function setupUploadListeners() {
 }
 
 function handleFile(file) {
+  // Verificação de tamanho do arquivo
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    alert(
+      `Este arquivo é muito grande (Limite: ${MAX_FILE_SIZE_MB}MB) e pode travar seu navegador.`
+    );
+    fileInput.value = null; // Limpa o input para permitir nova seleção
+    return;
+  }
+
   const fileType = file.type;
 
   if (!fileType.startsWith("image/") && fileType !== "application/pdf") {
@@ -1240,3 +1253,20 @@ const endPan = (e) => {
 };
 resultCanvas.addEventListener("mouseup", endPan);
 resultCanvas.addEventListener("mouseleave", endPan);
+
+// --- 7. Service Worker Registration ---
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("./sw.js")
+      .then((registration) => {
+        console.log(
+          "ServiceWorker registration successful with scope: ",
+          registration.scope
+        );
+      })
+      .catch((err) => {
+        console.log("ServiceWorker registration failed: ", err);
+      });
+  });
+}

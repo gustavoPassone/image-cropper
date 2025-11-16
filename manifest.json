@@ -1,0 +1,10 @@
+
+{
+  "name": "VoxScan",
+  "short_name": "VoxScan",
+  "description": "VoxScan - Corrija a Perspectiva do seu Documento. Uma aplicação para corrigir a perspectiva de imagens e documentos PDF ajustando seus cantos.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117"
+}
