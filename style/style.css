@@ -114,6 +114,12 @@
   cursor: grabbing;
 }
 
+#result-canvas.cleanup-active {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size: 24px;'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>🖌️</text></svg>")
+      16 16,
+    crosshair;
+}
+
 /* Custom Range Slider */
 input[type="range"] {
   -webkit-appearance: none;

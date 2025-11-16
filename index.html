@@ -261,7 +261,14 @@
                     class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2 col-span-2 bg-purple-600 text-white hover:bg-purple-700"
                   >
                     <i data-lucide="sparkles" class="w-5 h-5"></i>
-                    <span>Filtro Mágico (Otimizar)</span>
+                    <span>Filtro Mágico</span>
+                  </button>
+                  <button
+                    id="cleanup-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2 col-span-2 bg-teal-600 text-white hover:bg-teal-700"
+                  >
+                    <i data-lucide="wand-2" class="w-5 h-5"></i>
+                    <span>Limpeza Avançada</span>
                   </button>
                   <button
                     id="filter-none-button"
@@ -321,6 +328,54 @@
                   </div>
                 </div>
               </div>
+
+              <!-- CARD DE LIMPEZA AVANÇADA -->
+              <div
+                id="cleanup-controls"
+                class="hidden bg-[#161B22] border border-[#30363D] rounded-xl p-5 w-full"
+              >
+                <h4 class="font-semibold text-white">Modo de Limpeza</h4>
+                <p class="text-xs text-[#8B949E] mt-1">
+                  Pinte sobre as áreas com sombras ou manchas para removê-las.
+                </p>
+                <div class="mt-4 pt-4 border-t border-[#30363D]">
+                  <label
+                    for="brush-size-slider"
+                    class="block text-sm font-medium text-[#C9D1D9] mb-2"
+                    >Tamanho do Pincel</label
+                  >
+                  <div class="flex items-center gap-4">
+                    <input
+                      type="range"
+                      id="brush-size-slider"
+                      min="5"
+                      max="100"
+                      value="30"
+                      class="w-full"
+                    />
+                    <span
+                      id="brush-size-value"
+                      class="text-sm font-semibold text-[#8B949E] w-12 text-center"
+                      >30px</span
+                    >
+                  </div>
+                </div>
+                <div class="flex gap-3 mt-4">
+                  <button
+                    id="cleanup-cancel-button"
+                    class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 bg-[#30363D] text-[#C9D1D9] hover:bg-[#3d444c]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    id="cleanup-apply-button"
+                    class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 bg-[#238636] text-white hover:bg-[#2EA043]"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+              </div>
+
               <!-- CARD DE EXPORTAÇÃO -->
               <div
                 id="export-options"
