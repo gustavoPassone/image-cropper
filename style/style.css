@@ -55,11 +55,35 @@
 }
 
 .thumbnail-item {
-  @apply flex flex-col items-center gap-2 cursor-pointer p-3 rounded-lg border-2 border-transparent transition-all duration-200;
+  @apply relative flex flex-col items-center gap-2 cursor-pointer p-2 rounded-md border-2 border-transparent transition-all duration-200;
+  transition: transform 0.2s ease-in-out; /* Adicionado para animação suave */
+}
+.thumbnail-item.dragging {
+  @apply opacity-80 shadow-2xl;
+  transform: scale(1.05); /* Efeito de "elevação" */
 }
 
 .thumbnail-item:hover {
   @apply bg-[#21262D] border-[#30363D];
+}
+.thumbnail-item:hover .thumbnail-actions {
+  @apply opacity-100;
+}
+
+.thumbnail-canvas-wrapper {
+  @apply relative w-full bg-[#010409] rounded-sm overflow-hidden flex items-center justify-center; /* Garante tamanho uniforme */
+  aspect-ratio: 1 / 1.414; /* A4-like aspect ratio */
+}
+
+.thumbnail-actions {
+  @apply absolute top-1.5 right-1.5 z-10 flex flex-col gap-1.5 opacity-0 transition-opacity duration-200;
+}
+
+.thumbnail-action-btn {
+  @apply bg-black/50 text-white rounded p-1.5 backdrop-blur-sm hover:bg-black/80;
+}
+.thumbnail-action-btn:last-child {
+  @apply hover:text-red-400;
 }
 
 .thumbnail-item.edited {
@@ -86,7 +110,7 @@
 }
 
 .thumbnail-item canvas {
-  @apply w-full h-auto object-contain rounded-md shadow-md;
+  @apply max-w-full max-h-full object-contain shadow-md transition-transform duration-300; /* Garante que a imagem se ajuste sem distorcer */
 }
 
 .thumbnail-item p {
