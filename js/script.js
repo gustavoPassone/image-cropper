@@ -47,6 +47,7 @@ const exportButton = document.getElementById("export-button");
 const postProcessingToolbar = document.getElementById(
   "post-processing-toolbar"
 );
+const filterMagicButton = document.getElementById("filter-magic-button");
 const filterNoneButton = document.getElementById("filter-none-button");
 const filterBwButton = document.getElementById("filter-bw-button");
 const filterContrastButton = document.getElementById("filter-contrast-button");
@@ -81,7 +82,7 @@ let editedItems = new Map(); // Armazena itens editados (index -> dataURL)
 
 // Novas variáveis de estado para Pós-Processamento
 let correctedImageMat = null; // cv.Mat com a imagem original corrigida
-let currentFilter = "none"; // 'none', 'bw', 'contrast', 'sharpen'
+let currentFilter = "none"; // 'none', 'bw', 'contrast', 'sharpen', 'magic'
 
 // NOVAS: Variáveis para Zoom/Pan na tela de resultado
 const tempCanvasForFilters = document.createElement("canvas"); // Canvas temporário para filtros
@@ -1069,27 +1070,33 @@ function updateActiveFilterButton(activeFilter) {
     filterBwButton,
     filterContrastButton,
     filterSharpenButton,
+    filterMagicButton,
   ];
   const buttonMap = {
     none: filterNoneButton,
     bw: filterBwButton,
     contrast: filterContrastButton,
     sharpen: filterSharpenButton,
+    magic: filterMagicButton,
   };
 
   filterButtons.forEach((btn) => {
     btn.classList.remove("bg-[#2F81F7]", "text-white");
-    btn.classList.add("bg-[#30363D]", "text-[#C9D1D9]", "hover:bg-[#3d444c]");
+    if (btn.id !== "filter-magic-button") {
+      btn.classList.add("bg-[#30363D]", "text-[#C9D1D9]", "hover:bg-[#3d444c]");
+    }
   });
 
   if (buttonMap[activeFilter]) {
     const activeBtn = buttonMap[activeFilter];
-    activeBtn.classList.remove(
-      "bg-[#30363D]",
-      "text-[#C9D1D9]",
-      "hover:bg-[#3d444c]"
-    );
-    activeBtn.classList.add("bg-[#2F81F7]", "text-white");
+    if (activeFilter !== "magic") {
+      activeBtn.classList.remove(
+        "bg-[#30363D]",
+        "text-[#C9D1D9]",
+        "hover:bg-[#3d444c]"
+      );
+      activeBtn.classList.add("bg-[#2F81F7]", "text-white");
+    }
   }
 
   if (["bw", "contrast", "sharpen"].includes(activeFilter)) {
@@ -1108,7 +1115,21 @@ function applyPostProcessingEffects() {
 
   let matToDisplay;
   try {
-    if (currentFilter === "bw") {
+    if (currentFilter === "magic") {
+      matToDisplay = new cv.Mat();
+      let gray = new cv.Mat();
+      cv.cvtColor(correctedImageMat, gray, cv.COLOR_RGBA2GRAY);
+      cv.adaptiveThreshold(
+        gray,
+        matToDisplay,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY,
+        11,
+        4
+      );
+      gray.delete();
+    } else if (currentFilter === "bw") {
       matToDisplay = new cv.Mat();
       let gray = new cv.Mat();
       cv.cvtColor(correctedImageMat, gray, cv.COLOR_RGBA2GRAY);
@@ -1287,6 +1308,9 @@ editAnotherPageButton.addEventListener("click", () => {
 });
 
 // Listeners dos Filtros
+filterMagicButton.addEventListener("click", () =>
+  updateActiveFilterButton("magic")
+);
 filterNoneButton.addEventListener("click", () =>
   updateActiveFilterButton("none")
 );

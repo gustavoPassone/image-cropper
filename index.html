@@ -6,7 +6,7 @@
     <title>VoxScan - Corrija a Perspectiva do seu Documento</title>
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#0D1117" />
-    <link rel="shortcut icon" href="assets/favicon.png" type="image/x-icon">
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
 
     <!-- 1. Carrega o Tailwind CSS (configuração movida para o CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,11 +53,7 @@
       class="w-full flex items-center justify-between p-4 px-8 border-b border-[#30363D]"
     >
       <div class="flex items-center gap-3">
-        <img
-          src="assets/favicon.png"
-          alt="VoxScan Logo"
-          class="w-6 h-6"
-        />
+        <img src="assets/favicon.png" alt="VoxScan Logo" class="w-6 h-6" />
         <h1 class="text-lg font-semibold text-white">VoxScan</h1>
       </div>
     </header>
@@ -260,6 +256,13 @@
                   Filtros e Ajustes Finais
                 </h4>
                 <div class="grid grid-cols-2 gap-3 mt-4">
+                  <button
+                    id="filter-magic-button"
+                    class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2 col-span-2 bg-purple-600 text-white hover:bg-purple-700"
+                  >
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    <span>Filtro Mágico (Otimizar)</span>
+                  </button>
                   <button
                     id="filter-none-button"
                     class="w-full text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors duration-200 flex items-center justify-center gap-2"
