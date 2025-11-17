@@ -72,7 +72,7 @@ Se carregar um PDF com várias páginas ou um lote de imagens, você verá a tel
 3.  **Editar um Item**: Clique em uma miniatura para abri-la na tela de edição. Itens já editados são marcados com um ✔️.
 4.  Quando terminar, clique em **"Baixar como ZIP"** (para imagens) ou **"Finalizar e Baixar PDF"**.
 
-![Tela de Pré-visualização para Múltiplos Arquivos](assets/screenshot-preview.png)
+![Tela de Pré-visualização para Múltiplos Arquivos](assets/screenshot-preview.PNG)
 
 ### Etapa 3: Resultado e Exportação
 
@@ -83,7 +83,7 @@ Esta é a etapa final, onde você pode refinar e exportar seu documento corrigid
 3.  **Limpeza Avançada**: "Pinte" sobre sombras ou manchas para removê-las.
 4.  **Exportar**: Dê um nome ao arquivo, escolha o formato (PNG ou PDF) e clique em **"Confirmar e Baixar"**.
 
-![Tela de Resultado com Filtros e Opções de Exportação](assets/screenshot-resultado.png)
+![Tela de Resultado com Filtros e Opções de Exportação](assets/screenshot-resultado.PNG)
 
 ---
 
