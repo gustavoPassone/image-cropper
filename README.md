@@ -1,7 +1,7 @@
 
 # VoxScan - Ferramenta de Correção de Perspectiva de Documentos
 
-**Criado com [GenAI Apps](https://aistudio.google.com/app-brazil) e design inspirado no [Google Stitch](https://stitch.google.com).**
+**Criado com [GenAI Apps](https://aistudio.google.com/apps) e design com [Google Stitch](https://stitch.withgoogle.com/).**
 
 VoxScan é uma poderosa aplicação web progressiva (PWA) projetada para corrigir a perspectiva de imagens e documentos PDF. Se você já tirou uma foto de um documento em um ângulo, o VoxScan permite que você "aplane" a imagem, como se ela tivesse sido escaneada perfeitamente. A aplicação funciona inteiramente no seu navegador, garantindo que seus arquivos permaneçam privados e seguros.
 
@@ -49,7 +49,8 @@ A interface inicial é limpa e direta. Você pode arrastar e soltar seus arquivo
 
 Você pode carregar uma única imagem (JPG, PNG), um único PDF ou múltiplas imagens ao mesmo tempo.
 
-![Tela de Upload do VoxScan](assets/screenshot-upload.png)
+![Tela de Upload do VoxScan](assets/screenshot-upload-1.png) 
+![Tela de Upload do VoxScan](assets/screenshot-upload-2.png)
 
 ### Etapa 2: Pré-visualização e Edição
 
@@ -92,7 +93,7 @@ A aplicação é construída com tecnologias web padrão, focando na performance
 
 -   **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 -   **Estilização**: [Tailwind CSS](https://tailwindcss.com/) para uma prototipagem rápida e um design consistente.
--   **Processamento de Imagem**: [OpenCV.js](https://docs.opencv.org/4.9.0/opencv.js.html), uma poderosa biblioteca de visão computacional compilada para WebAssembly. É o coração da detecção de cantos, correção de perspectiva e filtros.
+-   **Processamento de Imagem**: [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html), uma poderosa biblioteca de visão computacional compilada para WebAssembly. É o coração da detecção de cantos, correção de perspectiva e filtros.
 -   **Manuseio de PDF**:
     -   [PDF.js](https://mozilla.github.io/pdf.js/): Usado para renderizar as páginas de arquivos PDF em elementos canvas.
     -   [jsPDF](https://github.com/parallax/jsPDF): Usado para criar os arquivos PDF de saída.
